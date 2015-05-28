@@ -1,0 +1,22 @@
+﻿<Properties StartupItem="UsbSerialExamples\UsbSerialExamples.csproj">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="Android.SelectDevice" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="UsbSerialForAndroid\Driver\UsbSerialDeviceID.cs">
+    <Files>
+      <File FileName="UsbSerialExamples\DeviceListActivity.cs" Line="94" Column="1" />
+      <File FileName="UsbSerialExamples\SerialConsoleActivity.cs" Line="69" Column="2" />
+      <File FileName="UsbSerialForAndroid\Driver\UsbSerialDeviceID.cs" Line="1" Column="1" />
+      <File FileName="UsbSerialForAndroid\Driver\UsbSerialDeviceInfo.cs" Line="1" Column="1" />
+      <File FileName="c:\Users\yhamada\Documents\Visual Studio 2013\Projects\UsbSerialForAndroid\UsbSerialForAndroid\Driver\CdcAcmSerialPort.cs" Line="1" Column="1" />
+      <File FileName="UsbSerialForAndroid\Driver\ProlificSerialPort.cs" Line="193" Column="22" />
+      <File FileName="UsbSerialForAndroid\Driver\UsbSerialPort.cs" Line="1" Column="1" />
+      <File FileName="UsbSerialForAndroid\Driver\Cp21xxSerialPort.cs" Line="1" Column="1" />
+      <File FileName="UsbSerialForAndroid\Driver\FtdiSerialPort.cs" Line="258" Column="1" />
+      <File FileName="UsbSerialForAndroid\Driver\UsbSerialDeviceManager.cs" Line="83" Column="3" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.ItemProperties.UsbSerialExamples AndroidDesignerPreferredDevice="Nexus 4" />
+</Properties>
