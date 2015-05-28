@@ -27,7 +27,7 @@ using System;
 using System.Threading;
 using Android.Hardware.Usb;
 
-namespace Aid.Android.UsbSerial
+namespace Aid.UsbSerial
 {
     public abstract class UsbSerialPort
     {

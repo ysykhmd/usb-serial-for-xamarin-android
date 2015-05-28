@@ -25,7 +25,7 @@
 
 using System;
 
-namespace Aid.Android.UsbSerial
+namespace Aid.UsbSerial
 {
     [Flags]
     public enum FlowControl

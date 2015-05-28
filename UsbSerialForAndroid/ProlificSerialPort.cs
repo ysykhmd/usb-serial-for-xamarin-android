@@ -41,7 +41,7 @@ using Android.Util;
 
 using Java.Nio;
 
-namespace Aid.Android.UsbSerial
+namespace Aid.UsbSerial
 {
 	public class ProlificSerialPort : UsbSerialPort
     {

@@ -31,7 +31,7 @@ using Android.OS;
 using Android.Util;
 using Android.Widget;
 
-using Aid.Android.UsbSerial;
+using Aid.UsbSerial;
 
 namespace UsbSerialExamples
 {

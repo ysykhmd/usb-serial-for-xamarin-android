@@ -28,7 +28,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Android.Hardware.Usb;
 
-namespace Aid.Android.UsbSerial
+namespace Aid.UsbSerial
 {
 	public class UsbSerialDeviceInfo
 	{

@@ -23,7 +23,7 @@
 
 using System;
 
-namespace Aid.Android.UsbSerial
+namespace Aid.UsbSerial
 {
     public class DataReceivedEventArgs : EventArgs
     {

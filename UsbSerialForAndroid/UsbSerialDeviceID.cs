@@ -23,7 +23,7 @@
  * Original project home page: https://github.com/mik3y/usb-serial-for-android
  */
 
-namespace Aid.Android.UsbSerial
+namespace Aid.UsbSerial
 {
 	public struct UsbSerialDeviceID
 	{

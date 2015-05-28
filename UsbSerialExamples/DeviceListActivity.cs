@@ -34,7 +34,7 @@ using Android.Util;
 using Android.Views;
 using Android.Widget;
 
-using Aid.Android.UsbSerial;
+using Aid.UsbSerial;
 
 [assembly: UsesFeature("android.hardware.usb.host")]
 
