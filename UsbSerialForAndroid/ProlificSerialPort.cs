@@ -314,8 +314,9 @@ namespace Aid.UsbSerial
 
                 SetControlLines(mControlLinesValue);
                 ResetDevice();
-
                 DoBlackMagic();
+				ResetParameters();
+
 				openedSuccessfully = true;
             }
 			finally {
@@ -346,7 +347,10 @@ namespace Aid.UsbSerial
 				if (Connection != null) {
 					ResetDevice ();
 				}
-			} finally {
+			}
+			catch (Exception) {
+			}
+			finally {
 				try {
 					if (Connection != null) {
 						Connection.ReleaseInterface (UsbDevice.GetInterface (0));
@@ -417,7 +421,7 @@ namespace Aid.UsbSerial
             return offset;
         }
 
-        public override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
+        protected override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
         {
             if ((mBaudRate == baudRate) && (mDataBits == dataBits)
                     && (mStopBits == stopBits) && (mParity == parity))

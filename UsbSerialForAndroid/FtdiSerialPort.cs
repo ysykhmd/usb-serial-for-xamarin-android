@@ -242,6 +242,7 @@ namespace Aid.UsbSerial
                     }
                 }
                 Reset();
+				ResetParameters();
 				openedSuccessfully = true;
             }
 			finally {
@@ -376,7 +377,7 @@ namespace Aid.UsbSerial
             return (int)actualBaudrate;
         }
 
-        public override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
+        protected override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
         {
             SetBaudRate(baudRate);
 

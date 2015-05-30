@@ -135,7 +135,7 @@ namespace Aid.UsbSerial
                 SetConfigSingle(SilabsER_IFC_ENABLE_REQUEST_CODE, UART_ENABLE);
                 SetConfigSingle(SilabsER_SET_MHS_REQUEST_CODE, MCR_ALL | CONTROL_WRITE_DTR | CONTROL_WRITE_RTS);
                 SetConfigSingle(SilabsER_SET_BAUDDIV_REQUEST_CODE, BAUD_RATE_GEN_FREQ / DEFAULT_BAUD_RATE);
-                //            setParameters(DEFAULT_BAUD_RATE, DEFAULT_DATA_BITS, DEFAULT_STOP_BITS, DEFAULT_PARITY);
+				ResetParameters();
 				openedSuccessfully = true;
             }
 			finally {
@@ -232,7 +232,7 @@ namespace Aid.UsbSerial
             }
         }
 
-        public override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
+        protected override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
         {
             setBaudRate(baudRate);
 

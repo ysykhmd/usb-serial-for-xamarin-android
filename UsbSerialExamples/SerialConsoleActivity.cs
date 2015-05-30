@@ -83,8 +83,8 @@ namespace UsbSerialExamples
 				mTitleTextView.Text = "No serial device.";
 			} else {
 				try {
+                    mUsbSerialPort.Baudrate = 19200;
 					mUsbSerialPort.Open ();
-					mUsbSerialPort.SetParameters (4800, 8, StopBits.One, Parity.None);
 				} catch (Exception e) {
 					Log.Error (TAG, "Error setting up device: " + e.Message, e);
 					mTitleTextView.Text = "Error opening device: " + e.Message;

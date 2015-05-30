@@ -116,6 +116,7 @@ namespace Aid.UsbSerial
                 {
                     Log.Debug(Tag, "Async reads disabled.");
                 }
+				ResetParameters();
 				openedSuccessfully = true;
             }
             finally {
@@ -242,7 +243,7 @@ namespace Aid.UsbSerial
             return offset;
         }
 
-        public override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
+        protected override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
         {
             byte stopBitsByte;
             switch (stopBits)

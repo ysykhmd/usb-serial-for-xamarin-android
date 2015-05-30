@@ -32,9 +32,15 @@ namespace Aid.UsbSerial
 {
     public class UsbSerialDeviceList
     {
-        public const int VendorFtdi = 0x0403;
-        public const int FtdiFT232R = 0x6001;
-        public const int FtdiFT231X = 0x6015;
+		public const int VendorFtdi = 0x0403;
+		public const int FtdiFT232_245 = 0x6001;
+		public const int FtdiFT2232 = 0x6010;
+		public const int FtdiFT4232 = 0x6011;
+		public const int FtdiFT232HL = 0x6014;
+
+		public const int VendorRatoc = 0x0584;
+		public const int RexUsb60F = 0xb020;
+		public const int RexUsb60MI = 0xb02f;
 
         public const int VendorAtmel = 0x03EB;
         public const int AtmelLufaCdcDemoApp = 0x2044;
@@ -94,8 +100,13 @@ namespace Aid.UsbSerial
             Default.AddAvailableDeviceInfo(VendorSilabs, SilabsCP2108, typeof(Cp21xxSerialPort), 1);
             Default.AddAvailableDeviceInfo(VendorSilabs, SilabsCP2110, typeof(Cp21xxSerialPort), 1);
 
-            Default.AddAvailableDeviceInfo(VendorFtdi, FtdiFT232R, typeof(FtdiSerialPort), 1);
-            Default.AddAvailableDeviceInfo(VendorFtdi, FtdiFT231X, typeof(FtdiSerialPort), 1);
+			Default.AddAvailableDeviceInfo(VendorFtdi, FtdiFT232_245, typeof(FtdiSerialPort), 1);
+			Default.AddAvailableDeviceInfo(VendorFtdi, FtdiFT2232, typeof(FtdiSerialPort), 2);
+			Default.AddAvailableDeviceInfo(VendorFtdi, FtdiFT4232, typeof(FtdiSerialPort), 4);
+			Default.AddAvailableDeviceInfo(VendorFtdi, FtdiFT232HL, typeof(FtdiSerialPort), 1);
+
+			Default.AddAvailableDeviceInfo(VendorRatoc, RexUsb60F, typeof(FtdiSerialPort), 1);
+			Default.AddAvailableDeviceInfo(VendorRatoc, RexUsb60MI, typeof(FtdiSerialPort), 1);
 
             Default.AddAvailableDeviceInfo(VendorProlific, ProlificPL2303, typeof(ProlificSerialPort), 1);
         }

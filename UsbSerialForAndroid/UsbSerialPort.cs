@@ -31,11 +31,14 @@ namespace Aid.UsbSerial
 {
     public abstract class UsbSerialPort
     {
-
         public const int DEFAULT_INTERNAL_READ_BUFFER_SIZE = 16 * 1024;
         public const int DEFAULT_TEMP_READ_BUFFER_SIZE = 16 * 1024;
         public const int DEFAULT_READ_BUFFER_SIZE = 16 * 1024;
         public const int DEFAULT_WRITE_BUFFER_SIZE = 16 * 1024;
+		public const int DefaultBaudrate = 9600;
+		public const int DefaultDataBits = 8;
+		public const Parity DefaultParity = Parity.None;
+		public const StopBits DefaultStopBits = StopBits.One;
 
         protected int mPortNumber;
 
@@ -56,15 +59,32 @@ namespace Aid.UsbSerial
         /** Internal write buffer.  Guarded by {@link #mWriteBufferLock}. */
         protected byte[] mWriteBuffer;
 
+		private int mDataBits;
 
-		public bool IsOpened { get; protected set; }
 		private volatile bool _ContinueUpdating;
+		public bool IsOpened { get; protected set; }
+		public int Baudrate { get; set; }
+		public int DataBits {
+			get { return mDataBits; }
+			set {
+				if (value < 5 || 8 < value)
+					throw new ArgumentOutOfRangeException ();
+				mDataBits = value;
+			}
+		}
+		public Parity Parity { get; set; }
+		public StopBits StopBits { get; set; }
 
         public event EventHandler<DataReceivedEventArgs> DataReceived;
 
 
         public UsbSerialPort(UsbManager manager, UsbDevice device, int portNumber)
         {
+			Baudrate = DefaultBaudrate;
+			DataBits = DefaultDataBits;
+			Parity = DefaultParity;
+			StopBits = DefaultStopBits;
+
             UsbManager = manager;
 			UsbDevice = device;
             mPortNumber = portNumber;
@@ -238,11 +258,16 @@ namespace Aid.UsbSerial
             return len;
         }
 
+		public void ResetParameters()
+		{
+			SetParameters(Baudrate, DataBits, StopBits, Parity);
+		}
+
         protected abstract int ReadInternal(byte[] dest, int timeoutMillis);
 
         public abstract int Write(byte[] src, int timeoutMillis);
 
-        public abstract void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity);
+		protected abstract void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity);
 
         public abstract bool CD { get; }
 
