@@ -39,7 +39,8 @@ namespace Aid.UsbSerial
 	public class UsbSerialDeviceManager
     {
         private Context Context { get; set; }
-        private UsbManager UsbManager { get; set; }
+		private bool IsWorking { get; set; }
+		private UsbManager UsbManager { get; set; }
         private UsbSerialDeviceBroadcastReceiver Receiver { get; set; }
         private string ActionUsbPermission { get; set; }
         public bool AllowAnonymousCdcAcmDevices { get; private set; }
@@ -47,7 +48,9 @@ namespace Aid.UsbSerial
         public event EventHandler<UsbSerialDeviceEventArgs> DeviceAttached;
 		public event EventHandler<UsbSerialDeviceEventArgs> DeviceDetached;
 
+		private object AvailableDeviceInfoSyncRoot = new object();
         public Dictionary<UsbSerialDeviceID, UsbSerialDeviceInfo> AvailableDeviceInfo { get; private set; }
+		private object AttachedDevicesSyncRoot = new object();
         public List<UsbSerialDevice> AttachedDevices { get; private set; }
 
         public UsbSerialDeviceManager(Context context, string actionUsbPermission, bool allowAnonymousCdcAmcDevices)
@@ -76,7 +79,11 @@ namespace Aid.UsbSerial
 
         public void Start()
         {
-            // listen for new devices
+			if (IsWorking) {
+				return;
+			}
+			IsWorking = true;
+			// listen for new devices
             IntentFilter filter = new IntentFilter();
             filter.AddAction(UsbManager.ActionUsbDeviceAttached);
             filter.AddAction(UsbManager.ActionUsbDeviceDetached);
@@ -92,64 +99,70 @@ namespace Aid.UsbSerial
             UsbSerialDevice serialDevice = GetDevice(usbManager, usbDevice, AllowAnonymousCdcAcmDevices);
             if (serialDevice != null)
             {
-                AttachedDevices.Add(serialDevice);
-                if (DeviceAttached != null)
-                {
-                    DeviceAttached(this, new UsbSerialDeviceEventArgs(serialDevice));
-                }
+				lock (AttachedDevicesSyncRoot) {
+					AttachedDevices.Add (serialDevice);
+					if (DeviceAttached != null) {
+						DeviceAttached (this, new UsbSerialDeviceEventArgs (serialDevice));
+					}
+				}
             }
         }
+
 
         internal void RemoveDevice(UsbDevice usbDevice)
         {
             UsbSerialDevice removedDevice = null;
-            foreach (UsbSerialDevice device in AttachedDevices)
-            {
+			UsbSerialDevice[] attachedDevices = AttachedDevices.ToArray();
+			foreach (UsbSerialDevice device in attachedDevices) {
 				if (
 					device.UsbDevice.VendorId == usbDevice.VendorId
 					&& device.UsbDevice.ProductId == usbDevice.ProductId
-					&& device.UsbDevice.SerialNumber == usbDevice.SerialNumber
-				)
-                {
-                    removedDevice = device;
-                    break;
-                }
-            }
-            if (removedDevice != null)
-            {
-                RemoveDevice(removedDevice);
-            }
+					&& device.UsbDevice.SerialNumber == usbDevice.SerialNumber) {
+					removedDevice = device;
+					break;
+				}
+			}
+			if (removedDevice != null) {
+				RemoveDevice (removedDevice);
+			}
         }
+
 
         internal void RemoveDevice(UsbSerialDevice serialDevice)
         {
             if (serialDevice != null)
             {
-                serialDevice.CloseAllPorts();
-                if (DeviceDetached != null)
-                {
-                    DeviceDetached(this, new UsbSerialDeviceEventArgs(serialDevice));
-                }
-                AttachedDevices.Remove(serialDevice);
+				lock (AttachedDevicesSyncRoot) {
+					serialDevice.CloseAllPorts ();
+					if (DeviceDetached != null) {
+						DeviceDetached (this, new UsbSerialDeviceEventArgs (serialDevice));
+					}
+					AttachedDevices.Remove (serialDevice);
+				}
             }
         }
 
 
         public void Stop()
-        {
-            foreach (UsbSerialDevice device in AttachedDevices)
-            {
-                RemoveDevice(device);
-            }
-            Context.UnregisterReceiver(Receiver);
-        }
+		{
+			if (!IsWorking) {
+				return;
+			}
+			IsWorking = false;
+			UsbSerialDevice[] attachedDevices = AttachedDevices.ToArray();
+			foreach (UsbSerialDevice device in attachedDevices) {
+				RemoveDevice (device);
+			}
+			Context.UnregisterReceiver (Receiver);
+		}
 
 
 
         public void Update()
         {
             // Remove detached devices from AttachedDevices
-            foreach (UsbSerialDevice attachedDevice in AttachedDevices)
+			UsbSerialDevice[] attachedDevices = AttachedDevices.ToArray();
+			foreach (UsbSerialDevice attachedDevice in attachedDevices)
             {
                 bool exists = false;
 				foreach (var usbDevice in UsbManager.DeviceList.Values) {
@@ -167,7 +180,8 @@ namespace Aid.UsbSerial
             // Add attached devices If not exists in AttachedDevices
             foreach (var usbDevice in UsbManager.DeviceList.Values) {
                 bool exists = false;
-                foreach (UsbSerialDevice attachedDevice in AttachedDevices)
+				attachedDevices = AttachedDevices.ToArray();
+                foreach (UsbSerialDevice attachedDevice in attachedDevices)
                 {
                     if ((usbDevice.VendorId == attachedDevice.ID.VendorID) && (usbDevice.ProductId == attachedDevice.ID.ProductID) && (usbDevice.SerialNumber == attachedDevice.UsbDevice.SerialNumber)) {
                         exists = true;
