@@ -27,6 +27,10 @@ using System;
 using System.Threading;
 using Android.Hardware.Usb;
 
+#if UseSmartThreadPool
+using Amib.Threading;
+#endif
+
 namespace Aid.UsbSerial
 {
     public abstract class UsbSerialPort
@@ -35,15 +39,17 @@ namespace Aid.UsbSerial
         public const int DEFAULT_TEMP_READ_BUFFER_SIZE = 16 * 1024;
         public const int DEFAULT_READ_BUFFER_SIZE = 16 * 1024;
         public const int DEFAULT_WRITE_BUFFER_SIZE = 16 * 1024;
-		public const int DefaultBaudrate = 9600;
-		public const int DefaultDataBits = 8;
-		public const Parity DefaultParity = Parity.None;
-		public const StopBits DefaultStopBits = StopBits.One;
+        public const int DefaultBaudrate = 9600;
+        public const int DefaultDataBits = 8;
+        public const Parity DefaultParity = Parity.None;
+        public const StopBits DefaultStopBits = StopBits.One;
+
+        public event EventHandler<DataReceivedEventArgs> DataReceived;
 
         protected int mPortNumber;
 
         // non-null when open()
-		protected UsbDeviceConnection Connection { get; set; }
+        protected UsbDeviceConnection Connection { get; set; }
 
         protected Object mInternalReadBufferLock = new Object();
         protected Object mReadBufferLock = new Object();
@@ -59,34 +65,41 @@ namespace Aid.UsbSerial
         /** Internal write buffer.  Guarded by {@link #mWriteBufferLock}. */
         protected byte[] mWriteBuffer;
 
-		private int mDataBits;
+        private int mDataBits;
 
-		private volatile bool _ContinueUpdating;
-		public bool IsOpened { get; protected set; }
-		public int Baudrate { get; set; }
-		public int DataBits {
-			get { return mDataBits; }
-			set {
-				if (value < 5 || 8 < value)
-					throw new ArgumentOutOfRangeException ();
-				mDataBits = value;
-			}
-		}
-		public Parity Parity { get; set; }
-		public StopBits StopBits { get; set; }
-
-        public event EventHandler<DataReceivedEventArgs> DataReceived;
-
-
-        public UsbSerialPort(UsbManager manager, UsbDevice device, int portNumber)
+        private volatile bool _ContinueUpdating;
+        public bool IsOpened { get; protected set; }
+        public int Baudrate { get; set; }
+        public int DataBits
         {
-			Baudrate = DefaultBaudrate;
-			DataBits = DefaultDataBits;
-			Parity = DefaultParity;
-			StopBits = DefaultStopBits;
+            get { return mDataBits; }
+            set
+            {
+                if (value < 5 || 8 < value)
+                    throw new ArgumentOutOfRangeException();
+                mDataBits = value;
+            }
+        }
+        public Parity Parity { get; set; }
+        public StopBits StopBits { get; set; }
+
+#if UseSmartThreadPool
+        public SmartThreadPool ThreadPool { get; set; }
+#endif
+
+#if UseSmartThreadPool
+        public UsbSerialPort(UsbManager manager, UsbDevice device, int portNumber, SmartThreadPool threadPool)
+#else
+        public UsbSerialPort(UsbManager manager, UsbDevice device, int portNumber)
+#endif
+        {
+            Baudrate = DefaultBaudrate;
+            DataBits = DefaultDataBits;
+            Parity = DefaultParity;
+            StopBits = DefaultStopBits;
 
             UsbManager = manager;
-			UsbDevice = device;
+            UsbDevice = device;
             mPortNumber = portNumber;
 
             mInternalReadBuffer = new byte[DEFAULT_INTERNAL_READ_BUFFER_SIZE];
@@ -95,6 +108,10 @@ namespace Aid.UsbSerial
             mReadBufferReadCursor = 0;
             mReadBufferWriteCursor = 0;
             mWriteBuffer = new byte[DEFAULT_WRITE_BUFFER_SIZE];
+
+#if UseSmartThreadPool
+            ThreadPool  = threadPool;
+#endif
         }
 
         public override string ToString()
@@ -170,76 +187,107 @@ namespace Aid.UsbSerial
         }
 
 
-		public abstract void Open ();
+        public abstract void Open();
 
-		public abstract void Close ();
-
-
-		protected void CreateConnection()
-		{
-			if (UsbManager != null && UsbDevice != null) {
-				lock (mReadBufferLock) {
-					lock (mWriteBufferLock) {
-						Connection = UsbManager.OpenDevice (UsbDevice);
-					}
-				}
-			}
-		}
+        public abstract void Close();
 
 
-		protected void CloseConnection()
-		{
-			if (Connection != null) {
-				lock (mReadBufferLock) {
-					lock (mWriteBufferLock) {
-						Connection.Close();
-						Connection = null;
-					}
-				}
-			}
-		}
-
-
-		protected void StartUpdating()
-		{
-			ThreadPool.QueueUserWorkItem (o => DoTasks ());
-		}
-
-
-		protected void StopUpdating()
-		{
-			_ContinueUpdating = false;
-		}
-
-
-		private WaitCallback DoTasks()
+        protected void CreateConnection()
         {
-			_ContinueUpdating = true;
-			while (_ContinueUpdating)
+            if (UsbManager != null && UsbDevice != null)
             {
-                int rxlen = ReadInternal(mTempReadBuffer, 0);
-                if (rxlen > 0)
+                lock (mReadBufferLock)
                 {
-                    lock (mReadBufferLock)
+                    lock (mWriteBufferLock)
                     {
-                        for (int i = 0; i < rxlen; i++)
-                        {
-                            mReadBuffer[mReadBufferWriteCursor] = mTempReadBuffer[i];
-                            mReadBufferWriteCursor = (mReadBufferWriteCursor + 1) % mReadBuffer.Length;
-                            if (mReadBufferWriteCursor == mReadBufferReadCursor)
-                            {
-                                mReadBufferReadCursor = (mReadBufferReadCursor + 1) % mReadBuffer.Length;
-                            }
-                        }
-                    }
-                    if (DataReceived != null)
-                    {
-                        DataReceived(this, new DataReceivedEventArgs(this));
+                        Connection = UsbManager.OpenDevice(UsbDevice);
                     }
                 }
             }
+        }
+
+
+        protected void CloseConnection()
+        {
+            if (Connection != null)
+            {
+                lock (mReadBufferLock)
+                {
+                    lock (mWriteBufferLock)
+                    {
+                        Connection.Close();
+                        Connection = null;
+                    }
+                }
+            }
+        }
+
+
+        protected void StartUpdating()
+        {
+#if UseSmartThreadPool
+            if (ThreadPool != null)
+            {
+                ThreadPool.QueueWorkItem(o => DoTasks());
+            }
+            else
+            {
+                System.Threading.ThreadPool.QueueUserWorkItem(o => DoTasks());
+            }
+#else
+            ThreadPool.QueueUserWorkItem(o => DoTasks());
+#endif
+        }
+
+
+        protected void StopUpdating()
+        {
+            _ContinueUpdating = false;
+        }
+
+#if UseSmartThreadPool
+        private object DoTasks()
+#else
+        private WaitCallback DoTasks()
+#endif
+        {
+            _ContinueUpdating = true;
+            while (_ContinueUpdating)
+            {
+                try
+                {
+                    int rxlen = ReadInternal(mTempReadBuffer, 0);
+                    if (rxlen > 0)
+                    {
+                        lock (mReadBufferLock)
+                        {
+                            for (int i = 0; i < rxlen; i++)
+                            {
+                                mReadBuffer[mReadBufferWriteCursor] = mTempReadBuffer[i];
+                                mReadBufferWriteCursor = (mReadBufferWriteCursor + 1) % mReadBuffer.Length;
+                                if (mReadBufferWriteCursor == mReadBufferReadCursor)
+                                {
+                                    mReadBufferReadCursor = (mReadBufferReadCursor + 1) % mReadBuffer.Length;
+                                }
+                            }
+                        }
+                        if (DataReceived != null)
+                        {
+                            DataReceived(this, new DataReceivedEventArgs(this));
+                        }
+                    }
+                }
+                catch
+                {
+                    _ContinueUpdating = false;
+                    Close();
+                }
+
+                Thread.Sleep(1);
+            }
             return null;
         }
+
 
         public int Read(byte[] dest, int startIndex)
         {
@@ -258,16 +306,16 @@ namespace Aid.UsbSerial
             return len;
         }
 
-		public void ResetParameters()
-		{
-			SetParameters(Baudrate, DataBits, StopBits, Parity);
-		}
+        public void ResetParameters()
+        {
+            SetParameters(Baudrate, DataBits, StopBits, Parity);
+        }
 
         protected abstract int ReadInternal(byte[] dest, int timeoutMillis);
 
         public abstract int Write(byte[] src, int timeoutMillis);
 
-		protected abstract void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity);
+        protected abstract void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity);
 
         public abstract bool CD { get; }
 
@@ -287,3 +335,4 @@ namespace Aid.UsbSerial
         }
     }
 }
+
