@@ -25,11 +25,10 @@
 
 using System;
 using System.Collections.Generic;
-
+using System.Reflection;
+using Android.Hardware.Usb;
 using Android.App;
 using Android.Content;
-using Android.Hardware.Usb;
-using Amib.Threading;
 
 namespace Aid.UsbSerial
 {
@@ -37,34 +36,29 @@ namespace Aid.UsbSerial
      *
      * @author Yasuyuki Hamada (yasuyuki_hamada@agri-info-design.com)
      */
-    public class UsbSerialDeviceManager
+	public class UsbSerialDeviceManager
     {
-        private Context Context { get; }
-        private bool IsWorking { get; set; }
-        private UsbManager UsbManager { get; }
-        private UsbSerialDeviceBroadcastReceiver Receiver { get; }
-        private string ActionUsbPermission { get; }
-        public bool AllowAnonymousCdcAcmDevices { get; }
-        public SmartThreadPool ThreadPool { get; private set; }
+        private Context Context { get; set; }
+		private bool IsWorking { get; set; }
+		private UsbManager UsbManager { get; set; }
+        private UsbSerialDeviceBroadcastReceiver Receiver { get; set; }
+        private string ActionUsbPermission { get; set; }
+        public bool AllowAnonymousCdcAcmDevices { get; private set; }
 
         public event EventHandler<UsbSerialDeviceEventArgs> DeviceAttached;
-        public event EventHandler<UsbSerialDeviceEventArgs> DeviceDetached;
+		public event EventHandler<UsbSerialDeviceEventArgs> DeviceDetached;
 
-        public Dictionary<UsbSerialDeviceID, UsbSerialDeviceInfo> AvailableDeviceInfo { get; }
-        private readonly object _attachedDevicesSyncRoot = new object();
-        public List<UsbSerialDevice> AttachedDevices { get; }
+		private object AvailableDeviceInfoSyncRoot = new object();
+        public Dictionary<UsbSerialDeviceID, UsbSerialDeviceInfo> AvailableDeviceInfo { get; private set; }
+		private object AttachedDevicesSyncRoot = new object();
+        public List<UsbSerialDevice> AttachedDevices { get; private set; }
 
         public UsbSerialDeviceManager(Context context, string actionUsbPermission, bool allowAnonymousCdcAmcDevices)
-            : this(context, actionUsbPermission, allowAnonymousCdcAmcDevices, UsbSerialDeviceList.Default, null)
+            : this(context, actionUsbPermission, allowAnonymousCdcAmcDevices, UsbSerialDeviceList.Default)
         {
         }
 
-        public UsbSerialDeviceManager(Context context, string actionUsbPermission, bool allowAnonymousCdcAmcDevices, SmartThreadPool threadPool)
-            : this(context, actionUsbPermission, allowAnonymousCdcAmcDevices, UsbSerialDeviceList.Default, threadPool)
-        {
-        }
-
-        public UsbSerialDeviceManager(Context context, string actionUsbPermission, bool allowAnonymousCdcAmcDevices, UsbSerialDeviceList availableDeviceList, SmartThreadPool threadPool)
+		public UsbSerialDeviceManager(Context context, string actionUsbPermission, bool allowAnonymousCdcAmcDevices, UsbSerialDeviceList availableDeviceList)
         {
             if (context == null)
                 throw new ArgumentNullException();
@@ -81,19 +75,16 @@ namespace Aid.UsbSerial
 
             AvailableDeviceInfo = availableDeviceList.AvailableDeviceInfo;
             AttachedDevices = new List<UsbSerialDevice>();
-
-            ThreadPool = threadPool;
         }
 
         public void Start()
         {
-            if (IsWorking)
-            {
-                return;
-            }
-            IsWorking = true;
-            // listen for new devices
-            var filter = new IntentFilter();
+			if (IsWorking) {
+				return;
+			}
+			IsWorking = true;
+			// listen for new devices
+            IntentFilter filter = new IntentFilter();
             filter.AddAction(UsbManager.ActionUsbDeviceAttached);
             filter.AddAction(UsbManager.ActionUsbDeviceDetached);
             filter.AddAction(ActionUsbPermission);
@@ -101,161 +92,170 @@ namespace Aid.UsbSerial
             Update();
         }
 
+        //
+
         internal void AddDevice(UsbManager usbManager, UsbDevice usbDevice)
         {
-            var serialDevice = GetDevice(usbManager, usbDevice, AllowAnonymousCdcAcmDevices);
+            UsbSerialDevice serialDevice = GetDevice(usbManager, usbDevice, AllowAnonymousCdcAcmDevices);
             if (serialDevice != null)
             {
-                lock (_attachedDevicesSyncRoot)
-                {
-                    AttachedDevices.Add(serialDevice);
-                    DeviceAttached?.Invoke(this, new UsbSerialDeviceEventArgs(serialDevice));
-                }
+				lock (AttachedDevicesSyncRoot) {
+					AttachedDevices.Add (serialDevice);
+					if (DeviceAttached != null) {
+						DeviceAttached (this, new UsbSerialDeviceEventArgs (serialDevice));
+					}
+				}
             }
         }
+
 
         internal void RemoveDevice(UsbDevice usbDevice)
         {
             UsbSerialDevice removedDevice = null;
-            var attachedDevices = AttachedDevices.ToArray();
-            foreach (var device in attachedDevices)
-            {
-                bool serialEquals;
-                try
-                {
-                    // TODO Fix this workaround of https://github.com/ysykhmd/usb-serial-for-xamarin-android/issues/1
-                    serialEquals = device.UsbDevice.SerialNumber == usbDevice.SerialNumber;
-                }
-                catch (Exception)
-                {
-                    serialEquals = true;
-                }
-
-                if (device.UsbDevice.VendorId == usbDevice.VendorId
-                    && device.UsbDevice.ProductId == usbDevice.ProductId
-                    && serialEquals)
-                {
-                    removedDevice = device;
-                    break;
-                }
-            }
-            if (removedDevice != null)
-            {
-                RemoveDevice(removedDevice);
-            }
+			UsbSerialDevice[] attachedDevices = AttachedDevices.ToArray();
+			foreach (UsbSerialDevice device in attachedDevices) {
+				if (
+					device.UsbDevice.VendorId == usbDevice.VendorId
+					&& device.UsbDevice.ProductId == usbDevice.ProductId
+					&& device.UsbDevice.SerialNumber == usbDevice.SerialNumber) {
+					removedDevice = device;
+					break;
+				}
+			}
+			if (removedDevice != null) {
+				RemoveDevice (removedDevice);
+			}
         }
+
 
         internal void RemoveDevice(UsbSerialDevice serialDevice)
         {
             if (serialDevice != null)
             {
-                lock (_attachedDevicesSyncRoot)
-                {
-                    serialDevice.CloseAllPorts();
-                    DeviceDetached?.Invoke(this, new UsbSerialDeviceEventArgs(serialDevice));
-                    AttachedDevices.Remove(serialDevice);
-                }
+				lock (AttachedDevicesSyncRoot) {
+					serialDevice.CloseAllPorts ();
+					if (DeviceDetached != null) {
+						DeviceDetached (this, new UsbSerialDeviceEventArgs (serialDevice));
+					}
+					AttachedDevices.Remove (serialDevice);
+				}
             }
         }
 
+
         public void Stop()
-        {
-            if (!IsWorking)
-            {
-                return;
-            }
-            IsWorking = false;
-            var attachedDevices = AttachedDevices.ToArray();
-            foreach (var device in attachedDevices)
-            {
-                RemoveDevice(device);
-            }
-            Context.UnregisterReceiver(Receiver);
-        }
+		{
+			if (!IsWorking) {
+				return;
+			}
+			IsWorking = false;
+			UsbSerialDevice[] attachedDevices = AttachedDevices.ToArray();
+			foreach (UsbSerialDevice device in attachedDevices) {
+				RemoveDevice (device);
+			}
+			Context.UnregisterReceiver (Receiver);
+		}
+
+
 
         public void Update()
         {
             // Remove detached devices from AttachedDevices
-            var attachedDevices = AttachedDevices.ToArray();
-            foreach (var attachedDevice in attachedDevices)
+			UsbSerialDevice[] attachedDevices = AttachedDevices.ToArray();
+			foreach (UsbSerialDevice attachedDevice in attachedDevices)
             {
-                var exists = false;
-                foreach (var usbDevice in UsbManager.DeviceList.Values)
-                {
+                bool exists = false;
+				foreach (var usbDevice in UsbManager.DeviceList.Values) {
                     if ((usbDevice.VendorId == attachedDevice.ID.VendorID) && (usbDevice.ProductId == attachedDevice.ID.ProductID) && (usbDevice.SerialNumber == attachedDevice.UsbDevice.SerialNumber))
                     {
                         exists = true;
                         break;
                     }
                 }
-                if (!exists)
-                {
-                    RemoveDevice(attachedDevice);
+				if (!exists) {
+					RemoveDevice(attachedDevice);
                 }
             }
 
             // Add attached devices If not exists in AttachedDevices
-            foreach (var usbDevice in UsbManager.DeviceList.Values)
-            {
-                var exists = false;
-                attachedDevices = AttachedDevices.ToArray();
-                foreach (var attachedDevice in attachedDevices)
+            foreach (var usbDevice in UsbManager.DeviceList.Values) {
+                bool exists = false;
+				attachedDevices = AttachedDevices.ToArray();
+                foreach (UsbSerialDevice attachedDevice in attachedDevices)
                 {
-                    if ((usbDevice.VendorId == attachedDevice.ID.VendorID) && (usbDevice.ProductId == attachedDevice.ID.ProductID) && (usbDevice.SerialNumber == attachedDevice.UsbDevice.SerialNumber))
-                    {
+                    if ((usbDevice.VendorId == attachedDevice.ID.VendorID) && (usbDevice.ProductId == attachedDevice.ID.ProductID) && (usbDevice.SerialNumber == attachedDevice.UsbDevice.SerialNumber)) {
                         exists = true;
                         break;
                     }
                 }
-                if (exists)
-                {
+                if (exists) {
                     break;
-                }
-                if (!UsbManager.HasPermission(usbDevice))
-                {
-                    var permissionIntent = PendingIntent.GetBroadcast(Context.ApplicationContext, 0, new Intent(ActionUsbPermission), 0);
-                    UsbManager.RequestPermission(usbDevice, permissionIntent);
-                }
-                else
-                {
-                    AddDevice(UsbManager, usbDevice);
+                } else {
+                    if (!UsbManager.HasPermission(usbDevice))
+                    {
+                        PendingIntent permissionIntent;
+                        permissionIntent = PendingIntent.GetBroadcast(Context.ApplicationContext, 0, new Intent(ActionUsbPermission), 0);
+                        UsbManager.RequestPermission(usbDevice, permissionIntent);
+                    }
+                    else
+                    {
+                        AddDevice(UsbManager, usbDevice);
+                    }
                 }
             }
         }
 
-        private UsbSerialDevice GetDevice(UsbManager usbManager, UsbDevice usbDevice, bool allowAnonymousCdcAcmDevices)
-        {
-            var id = new UsbSerialDeviceID(usbDevice.VendorId, usbDevice.ProductId);
-            var info = FindDeviceInfo(id, usbDevice.DeviceClass, allowAnonymousCdcAcmDevices);
-            if (info != null)
+
+		private UsbSerialDevice GetDevice(UsbManager usbManager, UsbDevice usbDevice, bool allowAnonymousCdcAcmDevices)
+		{
+            UsbSerialDeviceID id = new UsbSerialDeviceID(usbDevice.VendorId, usbDevice.ProductId);
+			UsbSerialDeviceInfo info = FindDeviceInfo (id);
+			if (info != null) {
+				UsbSerialDevice device = new UsbSerialDevice(usbManager, usbDevice, id, info);
+				return device;
+            }
+            else if (allowAnonymousCdcAcmDevices && usbDevice.DeviceClass == UsbClass.Comm)
             {
-                var device = new UsbSerialDevice(usbManager, usbDevice, id, info, ThreadPool);
-                return device;
-            }
-            return null;
-        }
+                UsbSerialDevice device = new UsbSerialDevice(usbManager, usbDevice, id, UsbSerialDeviceInfo.CdcAcm);
+				return device;
+			}
+			return null;
+		}
 
-        private UsbSerialDeviceInfo FindDeviceInfo(UsbSerialDeviceID id, UsbClass usbClass, bool allowAnonymousCdcAcmDevices)
+
+        private UsbSerialDeviceInfo FindDeviceInfo(UsbSerialDeviceID id)
         {
             if (AvailableDeviceInfo.ContainsKey(id))
             {
                 return AvailableDeviceInfo[id];
             }
-            if (allowAnonymousCdcAcmDevices && usbClass == UsbClass.Comm)
+            else
             {
-                return UsbSerialDeviceInfo.CdcAcm;
+                return null;
             }
-
-            return null;
         }
+
+        //
 
         private class UsbSerialDeviceBroadcastReceiver : BroadcastReceiver
         {
-            private UsbManager UsbManager { get; }
+            private UsbManager UsbManager
+            {
+                get;
+                set;
+            }
 
-            private UsbSerialDeviceManager DeviceManager { get; }
+            private UsbSerialDeviceManager DeviceManager
+            {
+                get;
+                set;
+            }
 
-            private string ActionUsbPermission { get; }
+            private string ActionUsbPermission
+            {
+                get;
+                set;
+            }
 
             public UsbSerialDeviceBroadcastReceiver(UsbSerialDeviceManager manager, UsbManager usbManager, string actionUsbPermission)
             {
@@ -266,40 +266,57 @@ namespace Aid.UsbSerial
 
             public override void OnReceive(Context context, Intent intent)
             {
-                var device = intent.GetParcelableExtra(UsbManager.ExtraDevice) as UsbDevice;
-                if (device == null)
-                    return;
-
-                var id = new UsbSerialDeviceID(device.VendorId, device.ProductId);
-                var info = DeviceManager.FindDeviceInfo(id, device.DeviceClass, DeviceManager.AllowAnonymousCdcAcmDevices);
-                if (info == null)
-                    return;
-
-                var action = intent.Action;
+                UsbDevice device = null;
+                string action = intent.Action;
                 if (action == UsbManager.ActionUsbDeviceAttached)
                 {
-                    if (!UsbManager.HasPermission(device))
+					Java.Lang.Object exdevobj = intent.GetParcelableExtra(UsbManager.ExtraDevice);
+					if (exdevobj is UsbDevice)
+					{
+						device = (UsbDevice)exdevobj;
+					}
+                    if (device != null && intent != null)
                     {
-                        var permissionIntent = PendingIntent.GetBroadcast(context, 0, new Intent(ActionUsbPermission), 0);
-                        UsbManager.RequestPermission(device, permissionIntent);
-                    }
-                    else
-                    {
-                        DeviceManager.AddDevice(UsbManager, device);
+                        if (!UsbManager.HasPermission(device))
+                        {
+                            PendingIntent permissionIntent;
+                            permissionIntent = PendingIntent.GetBroadcast(context, 0, new Intent(ActionUsbPermission), 0);
+                            UsbManager.RequestPermission(device, permissionIntent);
+                        }
+                        else
+                        {
+                            DeviceManager.AddDevice(UsbManager, device);
+                        }
                     }
                 }
                 else if (action == UsbManager.ActionUsbDeviceDetached)
                 {
-                    DeviceManager.RemoveDevice(device);
+					Java.Lang.Object exdevobj = intent.GetParcelableExtra(UsbManager.ExtraDevice);
+					if (exdevobj is UsbDevice)
+					{
+						device = (UsbDevice)exdevobj;
+					}
+					if (device != null)
+					{
+						DeviceManager.RemoveDevice(device);
+					}
                 }
                 else if (action == ActionUsbPermission)
                 {
-                    if (UsbManager.HasPermission(device))
+                    Java.Lang.Object exdevobj = intent.GetParcelableExtra(UsbManager.ExtraDevice);
+                    if (exdevobj is UsbDevice)
                     {
-                        DeviceManager.AddDevice(UsbManager, device);
+                        device = (UsbDevice)exdevobj;
+                    }
+                    if (device != null)
+                    {
+                        if (UsbManager.HasPermission(device))
+                        {
+                            DeviceManager.AddDevice(UsbManager, device);
+                        }
                     }
                 }
             }
         }
-    }
+	}
 }

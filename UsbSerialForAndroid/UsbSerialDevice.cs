@@ -26,11 +26,10 @@
 using System;
 using System.Reflection;
 using Android.Hardware.Usb;
-using Amib.Threading;
 
 namespace Aid.UsbSerial
 {
-    public sealed class UsbSerialDevice
+	public sealed class UsbSerialDevice
     {
         public UsbManager UsbManager { get; private set; }
 
@@ -38,34 +37,31 @@ namespace Aid.UsbSerial
 
         public UsbSerialPort[] Ports { get; private set; }
 
-        public UsbSerialDeviceID ID { get; private set; }
+		public UsbSerialDeviceID ID { get; private set; }
 
-        public UsbSerialDeviceInfo Info { get; private set; }
-
-        public UsbSerialDevice(UsbManager usbManager, UsbDevice usbDevice, UsbSerialDeviceID id, UsbSerialDeviceInfo info, SmartThreadPool threadPool)
-        {
+		public UsbSerialDeviceInfo Info { get; private set; }
+        
+        public UsbSerialDevice(UsbManager usbManager, UsbDevice usbDevice, UsbSerialDeviceID id, UsbSerialDeviceInfo info)
+		{
             UsbManager = usbManager;
             UsbDevice = usbDevice;
             ID = id;
-            Info = info;
+			Info = info;
 
-            ConstructorInfo cInfo = Info.DriverType.GetConstructor(new Type[] { typeof(UsbManager), typeof(UsbDevice), typeof(int) });
-            if (cInfo == null)
-            {
-                throw new InvalidProgramException();
-            }
+			ConstructorInfo cInfo = Info.DriverType.GetConstructor(new Type[] { typeof(UsbManager), typeof(UsbDevice), typeof(int) });
+			if (cInfo == null) {
+				throw new InvalidProgramException ();
+			}
 
-            Ports = new UsbSerialPort[info.NumberOfPorts];
-            for (int i = 0; i < Info.NumberOfPorts; i++)
-            {
+			Ports = new UsbSerialPort[info.NumberOfPorts];
+			for (int i = 0; i < Info.NumberOfPorts; i++) {
                 Ports[i] = (UsbSerialPort)cInfo.Invoke(new object[] { UsbManager, UsbDevice, i });
-                Ports[i].ThreadPool = threadPool;
-            }
-        }
+			}
+		}
 
         public void CloseAllPorts()
         {
-            foreach (UsbSerialPort port in Ports)
+            foreach(UsbSerialPort port in Ports)
             {
                 port.Close();
             }
