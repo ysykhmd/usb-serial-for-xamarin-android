@@ -43,7 +43,7 @@ using Java.Nio;
 
 namespace Aid.UsbSerial
 {
-	public class ProlificSerialPort : UsbSerialPort
+    public class ProlificSerialPort : UsbSerialPort
     {
 
         private const string TAG = "ProlificSerialPort";
@@ -60,7 +60,7 @@ namespace Aid.UsbSerial
 
         private const int ProlificVendorIN_REQTYPE = (int)UsbAddressing.In | UsbConstants.UsbTypeVendor;
 
-		private const int ProlificCTRL_OUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
+        private const int ProlificCTRL_OUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
 
         private const int WRITE_ENDPOINT = 0x02;
         private const int READ_ENDPOINT = 0x83;
@@ -100,8 +100,6 @@ namespace Aid.UsbSerial
         Parity? mParity;
 
         private int mStatus = 0;
-        private Thread mReadStatusThread = null;
-        private Object mReadStatusThreadLock = new Object();
         bool mStopReadStatusThread = false;
         private IOException mReadStatusException = null;
 
@@ -129,7 +127,7 @@ namespace Aid.UsbSerial
             int result = Connection.ControlTransfer((UsbAddressing)requestType, request, value, index, data, length, USB_WRITE_TIMEOUT_MILLIS);
             if (result != length)
             {
-				throw new IOException(string.Format("ControlTransfer with value 0x{0:x} failed: {1}", value, result));
+                throw new IOException(string.Format("ControlTransfer with value 0x{0:x} failed: {1}", value, result));
             }
         }
 
@@ -170,11 +168,11 @@ namespace Aid.UsbSerial
 
         private void SetControlLines(int newControlLinesValue)
         {
-			CtrlOut(SET_CONTROL_REQUEST, newControlLinesValue, 0, null);
+            CtrlOut(SET_CONTROL_REQUEST, newControlLinesValue, 0, null);
             mControlLinesValue = newControlLinesValue;
         }
 
-        private void ReadStatusThreadFunction()
+        private object ReadStatusThreadFunction()
         {
             try
             {
@@ -202,34 +200,13 @@ namespace Aid.UsbSerial
             {
                 mReadStatusException = e;
             }
+            return null;
         }
 
         private int Status
         {
             get
             {
-                if ((mReadStatusThread == null) && (mReadStatusException == null))
-                {
-                    lock (mReadStatusThreadLock)
-                    {
-                        if (mReadStatusThread == null)
-                        {
-                            byte[] buffer = new byte[STATUS_BUFFER_SIZE];
-                            int readBytes = Connection.BulkTransfer(mInterruptEndpoint, buffer, STATUS_BUFFER_SIZE, 100);
-                            if (readBytes != STATUS_BUFFER_SIZE)
-                            {
-                                Log.Warn(TAG, "Could not read initial CTS / DSR / CD / RI status");
-                            }
-                            else
-                            {
-                                mStatus = buffer[STATUS_BYTE_IDX] & 0xff;
-                            }
-                            mReadStatusThread = new Thread(ReadStatusThreadFunction);
-                            mReadStatusThread.Start();
-                        }
-                    }
-                }
-
                 /* throw and clear an exception which occured in the status read thread */
                 IOException readStatusException = mReadStatusException;
                 if (mReadStatusException != null)
@@ -247,18 +224,18 @@ namespace Aid.UsbSerial
             return ((Status & flag) == flag);
         }
 
-		public override void Open()
+        public override void Open()
         {
             bool openedSuccessfully = false;
             try
             {
-				CreateConnection();
+                CreateConnection();
 
-				UsbInterface usbInterface = UsbDevice.GetInterface(0);
-				if (!Connection.ClaimInterface(usbInterface, true))
-				{
-					throw new IOException("Error claiming Prolific interface 0");
-				}
+                UsbInterface usbInterface = UsbDevice.GetInterface(0);
+                if (!Connection.ClaimInterface(usbInterface, true))
+                {
+                    throw new IOException("Error claiming Prolific interface 0");
+                }
 
                 for (int i = 0; i < usbInterface.EndpointCount; ++i)
                 {
@@ -315,58 +292,83 @@ namespace Aid.UsbSerial
                 SetControlLines(mControlLinesValue);
                 ResetDevice();
                 DoBlackMagic();
-				ResetParameters();
+                ResetParameters();
 
-				openedSuccessfully = true;
+                //
+
+                byte[] buffer = new byte[STATUS_BUFFER_SIZE];
+                int readBytes = Connection.BulkTransfer(mInterruptEndpoint, buffer, STATUS_BUFFER_SIZE, 100);
+                if (readBytes != STATUS_BUFFER_SIZE)
+                {
+                    Log.Warn(TAG, "Could not read initial CTS / DSR / CD / RI status");
+                }
+                else
+                {
+                    mStatus = buffer[STATUS_BYTE_IDX] & 0xff;
+                }
+
+                if (ThreadPool != null)
+                {
+                    ThreadPool.QueueWorkItem(o => ReadStatusThreadFunction());
+                }
+                else
+                {
+                    System.Threading.ThreadPool.QueueUserWorkItem(o => ReadStatusThreadFunction());
+                }
+
+                openedSuccessfully = true;
             }
-			finally {
-				if (openedSuccessfully) {
-					IsOpened = true;
-					StartUpdating ();
-				} else {
-					CloseConnection();
-				}
-			}
+            finally
+            {
+                if (openedSuccessfully)
+                {
+                    IsOpened = true;
+                    StartUpdating();
+                }
+                else
+                {
+                    CloseConnection();
+                }
+            }
         }
 
         public override void Close()
-		{
-			StopUpdating ();
+        {
+            StopUpdating();
 
-			try {
-				mStopReadStatusThread = true;
-				lock (mReadStatusThreadLock) {
-					if (mReadStatusThread != null) {
-						try {
-							mReadStatusThread.Join ();
-						} catch (Exception e) {
-							Log.Warn (TAG, "An error occured while waiting for status read thread", e);
-						}
-					}
-				}
-				if (Connection != null) {
-					ResetDevice ();
-				}
-			}
-			catch (Exception) {
-			}
-			finally {
-				try {
-					if (Connection != null) {
-						Connection.ReleaseInterface (UsbDevice.GetInterface (0));
-					}
-				} finally {
-					CloseConnection ();
-					IsOpened = false;
-				}
-			}
-		}
+            try
+            {
+                mStopReadStatusThread = true;
+                if (Connection != null)
+                {
+                    ResetDevice();
+                }
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                try
+                {
+                    if (Connection != null)
+                    {
+                        Connection.ReleaseInterface(UsbDevice.GetInterface(0));
+                    }
+                }
+                finally
+                {
+                    CloseConnection();
+                    IsOpened = false;
+                }
+            }
+        }
 
         protected override int ReadInternal(byte[] dest, int timeoutMillis)
         {
-		if (Connection == null)
-			return 0;
-		
+            if (Connection == null)
+                return 0;
+
             lock (mInternalReadBufferLock)
             {
                 int readAmt = Math.Min(dest.Length, mInternalReadBuffer.Length);

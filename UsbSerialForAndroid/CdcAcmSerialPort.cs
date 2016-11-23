@@ -69,7 +69,9 @@ namespace Aid.UsbSerial
 		public CdcAcmSerialPort(UsbManager usbManager, UsbDevice usbDevice, int portNumber)
             : base(usbManager, usbDevice, portNumber)
         {
-            mEnableAsyncReads = (Build.VERSION.SdkInt >= BuildVersionCodes.JellyBeanMr1);
+            // Disabled because it is not work well under SmartThreadPool.
+            //mEnableAsyncReads = (Build.VERSION.SdkInt >= BuildVersionCodes.JellyBeanMr1);
+            mEnableAsyncReads = false;
         }
 
         public override void Open()
@@ -143,7 +145,7 @@ namespace Aid.UsbSerial
 
         protected override int ReadInternal(byte[] dest, int timeoutMillis)
         {
-		if (false)//(mEnableAsyncReads)
+            if (mEnableAsyncReads)
             {
                 UsbRequest request = new UsbRequest();
                 try
