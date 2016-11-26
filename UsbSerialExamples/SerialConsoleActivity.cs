@@ -55,7 +55,7 @@ namespace UsbSerialExamples
             mDumpTextView = (TextView)FindViewById(Resource.Id.consoleText);
             mScrollView = (ScrollView)FindViewById(Resource.Id.demoScroller);
 
-			mUsbSerialPort.DataReceived += UsbSerialPort_DataReceived;
+			mUsbSerialPort.DataReceivedEventLinser += DataReceivedHandler;
         }
 
         protected override void OnPause()
@@ -65,7 +65,7 @@ namespace UsbSerialExamples
             {
                 try
                 {
-					mUsbSerialPort.DataReceived -= UsbSerialPort_DataReceived;
+					mUsbSerialPort.DataReceivedEventLinser -= DataReceivedHandler;
                     mUsbSerialPort.Close();
                 }
                 catch (Exception)
@@ -100,9 +100,9 @@ namespace UsbSerialExamples
 			}
 		}
 
-        private void UsbSerialPort_DataReceived(object sender, DataReceivedEventArgs e)
+        private void DataReceivedHandler(object sender, DataReceivedEventArgs e)
         {
-            byte[] data = new byte[1024 * 16];
+            byte[] data = new byte[16384];
             int length = e.Port.Read(data, 0);
 			RunOnUiThread(() => { UpdateReceivedData (data, length);});
         }

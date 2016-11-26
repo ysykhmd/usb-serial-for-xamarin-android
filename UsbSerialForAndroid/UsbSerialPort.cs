@@ -44,7 +44,7 @@ namespace Aid.UsbSerial
         public const Parity DefaultParity = Parity.None;
         public const StopBits DefaultStopBits = StopBits.One;
 
-        public event EventHandler<DataReceivedEventArgs> DataReceived;
+        public event EventHandler<DataReceivedEventArgs> DataReceivedEventLinser;
 
         protected int mPortNumber;
 
@@ -271,9 +271,9 @@ namespace Aid.UsbSerial
                                 }
                             }
                         }
-                        if (DataReceived != null)
+                        if (DataReceivedEventLinser != null)
                         {
-                            DataReceived(this, new DataReceivedEventArgs(this));
+                            DataReceivedEventLinser(this, new DataReceivedEventArgs(this));
                         }
                     }
                 }
