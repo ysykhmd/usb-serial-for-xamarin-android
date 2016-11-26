@@ -78,8 +78,12 @@ namespace UsbSerialExamples
                         HexDump.toHexString((short)device.ProductId));
                 row.Text1.SetText(title, TextView.BufferType.Normal);
 
-				string subtitle = device.ProductName;
-                row.Text2.SetText(subtitle, TextView.BufferType.Normal);
+                // UsbDevice.ProductName is available from API Level 21 (Lollipop)
+                if (Build.VERSION.SdkInt >= BuildVersionCodes.Lollipop)
+                {
+                    string subtitle = device.ProductName;
+                    row.Text2.SetText(subtitle, TextView.BufferType.Normal);
+                }
 
                 return row;
 			}
