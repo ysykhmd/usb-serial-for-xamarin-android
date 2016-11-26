@@ -50,7 +50,14 @@ namespace UsbSerialExamples
     [MetaData(UsbManager.ActionUsbDeviceAttached, Resource = "@xml/device_filter")]
     public class DeviceListActivity : Activity
     {
-		private class MyArrayAdapter : ArrayAdapter<UsbSerialPort>
+        private class DeviceListItemHolder : Java.Lang.Object
+        {
+            public TextView deviceInfo { get; set; }
+            public TextView productName { get; set; }
+        }
+
+
+        private class MyArrayAdapter : ArrayAdapter<UsbSerialPort>
         {
             private DeviceListActivity DeviceListActivity { get; set; }
 
@@ -62,30 +69,47 @@ namespace UsbSerialExamples
 
 			public override View GetView(int position, View convertView, ViewGroup parent)
 			{
-                TwoLineListItem row;
-                if (convertView == null){
+                DeviceListItemHolder holder; 
+                View view;
+
+                if (convertView == null)
+                {
                     LayoutInflater inflater = (LayoutInflater)Context.GetSystemService(Context.LayoutInflaterService);
-                    row = (TwoLineListItem) inflater.Inflate(Android.Resource.Layout.SimpleListItem2, null);
-                } else {
-                    row = (TwoLineListItem) convertView;
+                    view = inflater.Inflate(Resource.Layout.device_list_item, null);
+                }
+                else
+                {
+                    view = convertView;
                 }
 
-				UsbSerialPort port = GetItem (position);
+                holder = view.Tag as DeviceListItemHolder;
+
+                if (null == holder)
+                {
+                    holder = new DeviceListItemHolder();
+
+                    holder.deviceInfo = (TextView) view.FindViewById(Resource.Id.device_info);
+                    holder.productName = (TextView) view.FindViewById(Resource.Id.product_name);
+
+                    view.Tag = holder;
+                }
+
+                UsbSerialPort port = GetItem (position);
 				UsbDevice device = port.UsbDevice;
 
 				string title = string.Format("Vendor {0:04x} Product {1:04x}",
                         HexDump.toHexString((short)device.VendorId),
                         HexDump.toHexString((short)device.ProductId));
-                row.Text1.SetText(title, TextView.BufferType.Normal);
+                holder.deviceInfo.SetText(title, TextView.BufferType.Normal);
 
                 // UsbDevice.ProductName is available from API Level 21 (Lollipop)
                 if (Build.VERSION.SdkInt >= BuildVersionCodes.Lollipop)
                 {
                     string subtitle = device.ProductName;
-                    row.Text2.SetText(subtitle, TextView.BufferType.Normal);
+                    holder.productName.SetText(subtitle, TextView.BufferType.Normal);
                 }
 
-                return row;
+                return view;
 			}
         }
 
@@ -99,7 +123,8 @@ namespace UsbSerialExamples
 
         private ListView mListView;
 
-		private ArrayAdapter<UsbSerialPort> mAdapter;
+
+        private ArrayAdapter<UsbSerialPort> mAdapter;
 		private List<UsbSerialPort> mUsbSerialPortList;
         private UsbSerialDeviceManager mUsbSerialDeviceManager;
 
@@ -112,7 +137,8 @@ namespace UsbSerialExamples
 			mUsbSerialPortList = new List<UsbSerialPort> ();
 
             mListView = (ListView)FindViewById(Resource.Id.deviceList);
-			mAdapter = new MyArrayAdapter(this, Android.Resource.Layout.SimpleExpandableListItem2, mUsbSerialPortList);
+
+            mAdapter = new MyArrayAdapter(this, Android.Resource.Layout.SimpleExpandableListItem2, mUsbSerialPortList);
             mListView.Adapter = mAdapter;
 
 			mUsbSerialDeviceManager.DeviceAttached += (object sender, UsbSerialDeviceEventArgs e) => { RefreshDeviceList(); };

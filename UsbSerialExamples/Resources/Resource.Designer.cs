@@ -119,10 +119,13 @@ namespace UsbSerialExamples
 		{
 			
 			// aapt resource value: 0x7f030000
-			public const int main = 2130903040;
+			public const int device_list_item = 2130903040;
 			
 			// aapt resource value: 0x7f030001
-			public const int serial_console = 2130903041;
+			public const int main = 2130903041;
+			
+			// aapt resource value: 0x7f030002
+			public const int serial_console = 2130903042;
 			
 			static Layout()
 			{
