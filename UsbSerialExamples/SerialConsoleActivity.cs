@@ -144,11 +144,6 @@ namespace UsbSerialExamples
             TestMainTimer.Dispose();
             ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
             ModeChangeButton.SetText(Resource.String.test_start);
-            // Test is normaly finish
-            if (sender != null)
-            {
-                RemainTimeTextView.SetText(Resource.String.remain_time_initial);
-            }
         }
 
         void StartTestMainTimer()

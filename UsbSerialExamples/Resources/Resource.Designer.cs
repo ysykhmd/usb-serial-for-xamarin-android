@@ -63,8 +63,8 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f060006
 			public const int activity_status = 2131099654;
 			
-			// aapt resource value: 0x7f060010
-			public const int consoleText = 2131099664;
+			// aapt resource value: 0x7f06000f
+			public const int consoleText = 2131099663;
 			
 			// aapt resource value: 0x7f06000e
 			public const int demoScroller = 2131099662;
@@ -84,8 +84,8 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f060009
 			public const int good_count = 2131099657;
 			
-			// aapt resource value: 0x7f060011
-			public const int modeChange = 2131099665;
+			// aapt resource value: 0x7f060010
+			public const int modeChange = 2131099664;
 			
 			// aapt resource value: 0x7f060001
 			public const int product_name = 2131099649;
@@ -104,9 +104,6 @@ namespace UsbSerialExamples
 			
 			// aapt resource value: 0x7f060002
 			public const int separator = 2131099650;
-			
-			// aapt resource value: 0x7f06000f
-			public const int separator2 = 2131099663;
 			
 			// aapt resource value: 0x7f060007
 			public const int test_time = 2131099655;
