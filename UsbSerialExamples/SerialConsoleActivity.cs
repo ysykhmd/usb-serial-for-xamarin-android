@@ -32,30 +32,153 @@ using Android.Util;
 using Android.Widget;
 
 using Aid.UsbSerial;
+using System.Threading;
 
 namespace UsbSerialExamples
 {
     [Activity(Label = "@string/app_name")]
+
     public class SerialConsoleActivity : Activity
     {
-        private const string TAG = "SerialConsoleActivity";
+        const string TAG = "SerialConsoleActivity";
 
-		private static UsbSerialPort mUsbSerialPort = null;
+        enum TEST_STATUS { STANDBY, TESTING }
 
-        private TextView mTitleTextView;
-        private TextView mDumpTextView;
-        private ScrollView mScrollView;
+        static UsbSerialPort mUsbSerialPort = null;
+
+        TEST_STATUS ActivityStatus;
+        TextView TitleTextView;
+        TextView DumpTextView;
+        ScrollView ScrollView;
+        CheckNmeaCheckSum CheckInstance;
+
+        Timer UpdateTestResultTimer;
+        Timer TestMainTimer;
+        Int32 TestTimePeriod = 10; // 5 * 60;
+        Int32 TestTimeRemain;
+
+        TextView ActivityStatusTextView;
+        TextView TestTimeTextView;
+        TextView RemainTimeTextView;
+        TextView GoodCountTextView;
+        TextView ErrorCountTextView;
+        TextView TotalCountTextView;
+        Button ModeChangeButton;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
             SetContentView(Resource.Layout.serial_console);
 
-            mTitleTextView = (TextView)FindViewById(Resource.Id.demoTitle);
-            mDumpTextView = (TextView)FindViewById(Resource.Id.consoleText);
-            mScrollView = (ScrollView)FindViewById(Resource.Id.demoScroller);
+            ActivityStatus = TEST_STATUS.STANDBY;
 
-			mUsbSerialPort.DataReceivedEventLinser += DataReceivedHandler;
+            TitleTextView = (TextView)FindViewById(Resource.Id.demoTitle);
+            DumpTextView = (TextView)FindViewById(Resource.Id.consoleText);
+            ScrollView = (ScrollView)FindViewById(Resource.Id.demoScroller);
+
+            ActivityStatusTextView = (TextView)FindViewById(Resource.Id.activity_status);
+            ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
+
+            TestTimeTextView = (TextView)FindViewById(Resource.Id.test_time);
+            TestTimeTextView.SetText(string.Format("{0:0#}:{1:0#}", TestTimePeriod / 60, TestTimePeriod % 60), TextView.BufferType.Normal);
+
+            RemainTimeTextView = (TextView)FindViewById(Resource.Id.remain_time);
+            RemainTimeTextView.SetText(Resource.String.remain_time_initial);
+
+            GoodCountTextView = (TextView)FindViewById(Resource.Id.good_count);
+            ErrorCountTextView = (TextView)FindViewById(Resource.Id.error_count);
+            TotalCountTextView = (TextView)FindViewById(Resource.Id.total_count);
+
+            ModeChangeButton = (Button)FindViewById(Resource.Id.modeChange);
+            ModeChangeButton.Click += ModeChangeButtonHandler;
+
+            CheckInstance = new CheckNmeaCheckSum();
+
+            mUsbSerialPort.DataReceivedEventLinser += DataReceivedHandler;
+        }
+
+        void ModeChangeButtonHandler(object sender, EventArgs e)
+        {
+            if (ActivityStatus == TEST_STATUS.STANDBY)
+            {
+                StartTest();
+            }
+            else
+            {
+                FinishTest(null);
+            }
+        }
+
+        void StartTest()
+        {
+            CheckInstance.ResetProc();
+            ActivityStatus = TEST_STATUS.TESTING;
+            StartTestMainTimer();
+            SetUpdateTestResultTimer();
+            ActivityStatusTextView.SetText(Resource.String.activity_status_testing);
+            ModeChangeButton.SetText(Resource.String.test_cancel);
+            TestTimeRemain = TestTimePeriod;
+        }
+
+        void FinishTestHandler(Object sender)
+        {
+            Object thisLock = new Object();
+            lock (thisLock)
+            {
+                ActivityStatus = TEST_STATUS.STANDBY;
+                UpdateTestResultTimer.Dispose();
+                TestMainTimer.Dispose();
+                RunOnUiThread(() =>
+                {
+                    ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
+                    RemainTimeTextView.SetText(Resource.String.remain_time_normal_end);
+                    ModeChangeButton.SetText(Resource.String.test_start);
+                });
+            }
+        }
+
+        void FinishTest(Object sender)
+        {
+            ActivityStatus = TEST_STATUS.STANDBY;
+            UpdateTestResultTimer.Dispose();
+            TestMainTimer.Dispose();
+            ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
+            ModeChangeButton.SetText(Resource.String.test_start);
+            // Test is normaly finish
+            if (sender != null)
+            {
+                RemainTimeTextView.SetText(Resource.String.remain_time_initial);
+            }
+        }
+
+        void StartTestMainTimer()
+        {
+            TestMainTimer = new Timer(FinishTestHandler, this, TestTimePeriod * 1000, Timeout.Infinite);
+        }
+
+        void SetUpdateTestResultTimer()
+        {
+            UpdateTestResultTimer = new Timer(UpdateTestResultDisplay, this, 0, 1000);
+        }
+
+        void UpdateTestResultDisplay(Object sender)
+        {
+            Object thisLock = new Object();
+            lock(thisLock)
+            {
+                RunOnUiThread(() => {
+                    RemainTimeTextView.SetText(string.Format("{0:0#}:{1:0#}", TestTimeRemain / 60, TestTimeRemain % 60), TextView.BufferType.Normal);
+                    GoodCountTextView. SetText(CheckInstance.GoodCountString,  TextView.BufferType.Normal);
+                    ErrorCountTextView.SetText(CheckInstance.ErrorCountString, TextView.BufferType.Normal);
+                    TotalCountTextView.SetText(CheckInstance.TotalCountString, TextView.BufferType.Normal);
+                });
+                TestTimeRemain -= 1;
+                if (TestTimeRemain < 0)
+                {
+                    TestTimeRemain = 0;
+                }
+
+            }
         }
 
         protected override void OnPause()
@@ -65,8 +188,8 @@ namespace UsbSerialExamples
             {
                 try
                 {
-					mUsbSerialPort.DataReceivedEventLinser -= DataReceivedHandler;
                     mUsbSerialPort.Close();
+                    mUsbSerialPort.DataReceivedEventLinser -= DataReceivedHandler;
                 }
                 catch (Exception)
                 {
@@ -80,14 +203,14 @@ namespace UsbSerialExamples
 			base.OnResume ();
 			Log.Debug (TAG, "Resumed, port=" + mUsbSerialPort);
 			if (mUsbSerialPort == null) {
-				mTitleTextView.Text = "No serial device.";
+				TitleTextView.Text = "No serial device.";
 			} else {
 				try {
                     mUsbSerialPort.Baudrate = 19200;
 					mUsbSerialPort.Open ();
 				} catch (Exception e) {
 					Log.Error (TAG, "Error setting up device: " + e.Message, e);
-					mTitleTextView.Text = "Error opening device: " + e.Message;
+					TitleTextView.Text = "Error opening device: " + e.Message;
 					try {
 						mUsbSerialPort.Close ();
 					} catch (Exception) {
@@ -96,23 +219,34 @@ namespace UsbSerialExamples
 					mUsbSerialPort = null;
 					return;
 				}
-				mTitleTextView.Text = "Serial device: " + mUsbSerialPort.GetType ().Name;
+				TitleTextView.Text = "Serial device: " + mUsbSerialPort.GetType ().Name;
 			}
 		}
 
         private void DataReceivedHandler(object sender, DataReceivedEventArgs e)
         {
-            byte[] data = new byte[16384];
-            int length = e.Port.Read(data, 0);
-			RunOnUiThread(() => { UpdateReceivedData (data, length);});
+            Object thisLock = new Object();
+            lock (thisLock)
+            {
+                byte[] data = new byte[16384];
+                int length = e.Port.Read(data, 0);
+                RunOnUiThread(() => { UpdateReceivedData(data, length); });
+                if (ActivityStatus == TEST_STATUS.TESTING)
+                {
+                    for (int i = 0; i < length; i++)
+                    {
+                        CheckInstance.ProcData(data[i]);
+                    }
+                }
+            }
         }
 
         public void UpdateReceivedData(byte[] data, int length)
         {
             //string message = "Read " + length + " bytes: \n" + HexDump.DumpHexString(data, 0, length) + "\n\n";
 			//mDumpTextView.Append(message);
-			mDumpTextView.Append(System.Text.Encoding.Default.GetString(data, 0, length));
-            mScrollView.SmoothScrollTo(0, mDumpTextView.Bottom);
+			DumpTextView.Append(System.Text.Encoding.Default.GetString(data, 0, length));
+            ScrollView.SmoothScrollTo(0, DumpTextView.Bottom);
         }
 
         /**
@@ -127,6 +261,100 @@ namespace UsbSerialExamples
             Intent intent = new Intent(context, typeof(SerialConsoleActivity));
             intent.AddFlags(ActivityFlags.SingleTop | ActivityFlags.NoHistory);
             context.StartActivity(intent);
+        }
+    }
+
+    abstract class CheckData
+    {
+        abstract public string TestMode { get; }
+        abstract public string GoodCountString { get; }
+        abstract public string ErrorCountString { get; }
+        abstract public string TotalCountString { get; }
+        abstract public void ProcData(byte data);
+        abstract public void ResetProc();
+    }
+
+    class CheckNmeaCheckSum : CheckData
+    {
+        enum STATE : byte { IDLE, DATA, SUM1, SUM2 };
+
+        public override string TestMode { get { return "NMEA Check Sum"; } }
+        public override string GoodCountString  { get { return goodCount. ToString(); } }
+        public override string ErrorCountString { get { return errorCount.ToString(); } }
+        public override string TotalCountString { get { return totalCount.ToString(); } }
+        STATE state = STATE.IDLE;
+        Int64 goodCount = 0;
+        Int64 errorCount = 0;
+        Int64 totalCount = 0;
+        byte calcSum = 0;
+        byte getSum = 0;
+        byte firstCharValue;
+        byte secondCharValue;
+        Object thisLock = new Object();
+
+        public override void ResetProc()
+        {
+            goodCount = 0;
+            errorCount = 0;
+            totalCount = 0;
+            state = STATE.IDLE;
+        }
+
+        public override void ProcData(byte data)
+        {
+            switch (state)
+            {
+                case STATE.IDLE:
+                    if (data == '$')
+                    {
+                        state = STATE.DATA;
+                        calcSum = 0;
+                    }
+                    break;
+                case STATE.DATA:
+                    if (data == '*')
+                    {
+                        state = STATE.SUM1;
+                    }
+                    else
+                    {
+                        calcSum ^= data;
+                    }
+                    break;
+                case STATE.SUM1:
+                    firstCharValue = CharToHex(data);
+                    state = STATE.SUM2;
+                    break;
+                case STATE.SUM2:
+                    secondCharValue = CharToHex(data);
+                    getSum = (byte)(firstCharValue * 16 + secondCharValue);
+                    state = STATE.IDLE;
+                    lock(thisLock)
+                    {
+                        if (calcSum == getSum)
+                        {
+                            goodCount += 1;
+                        }
+                        else
+                        {
+                            errorCount += 1;
+                        }
+                        totalCount += 1;
+                    }
+                    break;
+            }
+        }
+
+        byte CharToHex(byte c)
+        {
+            if (c >= '0' && c <= '9')
+            {
+                return (byte)(c - '0');
+            }
+            else
+            {
+                return (byte)((c & 0x0f) + 9);
+            }
         }
     }
 }

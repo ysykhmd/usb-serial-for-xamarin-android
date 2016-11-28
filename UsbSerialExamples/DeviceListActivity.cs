@@ -61,15 +61,15 @@ namespace UsbSerialExamples
         {
             private DeviceListActivity DeviceListActivity { get; set; }
 
-			public MyArrayAdapter(DeviceListActivity activity, int textViewResourceId, List<UsbSerialPort> objects)
+            public MyArrayAdapter(DeviceListActivity activity, int textViewResourceId, List<UsbSerialPort> objects)
                 : base(activity, textViewResourceId, objects)
             {
                 DeviceListActivity = activity;
-			}
+            }
 
-			public override View GetView(int position, View convertView, ViewGroup parent)
-			{
-                DeviceListItemHolder holder; 
+            public override View GetView(int position, View convertView, ViewGroup parent)
+            {
+                DeviceListItemHolder holder;
                 View view;
 
                 if (convertView == null)
@@ -88,16 +88,16 @@ namespace UsbSerialExamples
                 {
                     holder = new DeviceListItemHolder();
 
-                    holder.deviceInfo = (TextView) view.FindViewById(Resource.Id.device_info);
-                    holder.productName = (TextView) view.FindViewById(Resource.Id.product_name);
+                    holder.deviceInfo = (TextView)view.FindViewById(Resource.Id.device_info);
+                    holder.productName = (TextView)view.FindViewById(Resource.Id.product_name);
 
                     view.Tag = holder;
                 }
 
-                UsbSerialPort port = GetItem (position);
-				UsbDevice device = port.UsbDevice;
+                UsbSerialPort port = GetItem(position);
+                UsbDevice device = port.UsbDevice;
 
-				string title = string.Format("Vendor {0:04x} Product {1:04x}",
+                string title = string.Format("Vendor {0:04x} Product {1:04x}",
                         HexDump.toHexString((short)device.VendorId),
                         HexDump.toHexString((short)device.ProductId));
                 holder.deviceInfo.SetText(title, TextView.BufferType.Normal);
@@ -110,22 +110,22 @@ namespace UsbSerialExamples
                 }
 
                 return view;
-			}
+            }
         }
 
 
-		//
+        //
 
 
         private const string TAG = "DeviceListActivity";
-		private const int MESSAGE_REFRESH = 101;
-		private const long REFRESH_TIMEOUT_MILLIS = 5000;
+        private const int MESSAGE_REFRESH = 101;
+        private const long REFRESH_TIMEOUT_MILLIS = 5000;
 
         private ListView mListView;
 
 
         private ArrayAdapter<UsbSerialPort> mAdapter;
-		private List<UsbSerialPort> mUsbSerialPortList;
+        private List<UsbSerialPort> mUsbSerialPortList;
         private UsbSerialDeviceManager mUsbSerialDeviceManager;
 
         protected override void OnCreate(Bundle savedInstanceState)
@@ -133,46 +133,48 @@ namespace UsbSerialExamples
             base.OnCreate(savedInstanceState);
             SetContentView(Resource.Layout.main);
 
-			mUsbSerialDeviceManager = new UsbSerialDeviceManager(this, "Aid.UsbSerialExamples.Aid.UsbSerialExamples.USB_PERMISSION", true);
-			mUsbSerialPortList = new List<UsbSerialPort> ();
+            mUsbSerialDeviceManager = new UsbSerialDeviceManager(this, "Aid.UsbSerialExamples.Aid.UsbSerialExamples.USB_PERMISSION", true);
+            mUsbSerialPortList = new List<UsbSerialPort>();
 
             mListView = (ListView)FindViewById(Resource.Id.deviceList);
 
             mAdapter = new MyArrayAdapter(this, Android.Resource.Layout.SimpleExpandableListItem2, mUsbSerialPortList);
             mListView.Adapter = mAdapter;
 
-			mUsbSerialDeviceManager.DeviceAttached += (object sender, UsbSerialDeviceEventArgs e) => { RefreshDeviceList(); };
-			mUsbSerialDeviceManager.DeviceDetached += (object sender, UsbSerialDeviceEventArgs e) => { RefreshDeviceList(); };
-			mUsbSerialDeviceManager.Start ();
+            mUsbSerialDeviceManager.DeviceAttached += (object sender, UsbSerialDeviceEventArgs e) => { RefreshDeviceList(); };
+            mUsbSerialDeviceManager.DeviceDetached += (object sender, UsbSerialDeviceEventArgs e) => { RefreshDeviceList(); };
+            mUsbSerialDeviceManager.Start();
 
             mListView.ItemClick += (sender, e) =>
             {
                 int position = e.Position;
                 Log.Debug(TAG, "Pressed item " + position);
-				if (mAdapter.Count <= position)
+                if (mAdapter.Count <= position)
                 {
                     Log.Warn(TAG, "Illegal position.");
                     return;
                 }
 
-				UsbSerialPort port = mAdapter.GetItem(position);
+                UsbSerialPort port = mAdapter.GetItem(position);
                 ShowConsoleActivity(port);
             };
         }
 
         public void RefreshDeviceList()
         {
-			mAdapter.Clear ();
-			foreach (var attachedDevice in mUsbSerialDeviceManager.AttachedDevices) {
-				var ports = attachedDevice.Ports;
-				foreach(var port in ports) {
-					mAdapter.Add (port);
-				}
-			}
-			mAdapter.NotifyDataSetChanged();
+            mAdapter.Clear();
+            foreach (var attachedDevice in mUsbSerialDeviceManager.AttachedDevices)
+            {
+                var ports = attachedDevice.Ports;
+                foreach (var port in ports)
+                {
+                    mAdapter.Add(port);
+                }
+            }
+            mAdapter.NotifyDataSetChanged();
         }
 
-		private void ShowConsoleActivity(UsbSerialPort port)
+        private void ShowConsoleActivity(UsbSerialPort port)
         {
             SerialConsoleActivity.Show(this, port);
         }

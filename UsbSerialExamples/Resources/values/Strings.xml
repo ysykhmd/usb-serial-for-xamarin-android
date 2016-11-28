@@ -3,4 +3,16 @@
   <string name="app_title">USB Serial Example</string>
   <string name="app_name">Serial Example</string>
   <string name="refreshing">Refreshing...</string>
+  <string name="title_status">Status</string>
+  <string name="title_test_time">Test time</string>
+  <string name="title_remain">Remain</string>
+  <string name="title_good">Good</string>
+  <string name="title_error">Error</string>
+  <string name="title_total">Total</string>
+  <string name="test_start">Start</string>
+  <string name="test_cancel">Cancel</string>
+  <string name="activity_status_standby">Standby</string>
+  <string name="activity_status_testing">Testing</string>
+  <string name="remain_time_initial">--:--</string>
+  <string name="remain_time_normal_end">00:00</string>
 </resources>
