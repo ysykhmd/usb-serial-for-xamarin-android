@@ -29,6 +29,7 @@ using Android.App;
 using Android.Content;
 using Android.OS;
 using Android.Util;
+using Android.Views;
 using Android.Widget;
 
 using Aid.UsbSerial;
@@ -43,6 +44,7 @@ namespace UsbSerialExamples
         const string TAG = "SerialConsoleActivity";
 
         enum TEST_STATUS { STANDBY, TESTING }
+        enum TEST_PERIOD : Int16{ SEC30 = 30, MIN01 = 60, MIN03 = 180, MIN05 = 300, MIN10 = 600 }
 
         static UsbSerialPort mUsbSerialPort = null;
 
@@ -69,6 +71,8 @@ namespace UsbSerialExamples
         {
             base.OnCreate(savedInstanceState);
             SetContentView(Resource.Layout.serial_console);
+
+            ActionBar.SetTitle(Resource.String.test_console_title);
 
             ActivityStatus = TEST_STATUS.STANDBY;
 
@@ -97,6 +101,43 @@ namespace UsbSerialExamples
             mUsbSerialPort.DataReceivedEventLinser += DataReceivedHandler;
         }
 
+        public override Boolean OnCreateOptionsMenu(IMenu menu)
+        {
+            MenuInflater.Inflate(Resource.Menu.test_console_menu, menu);
+            return base.OnPrepareOptionsMenu(menu);
+        }
+
+        public override bool OnOptionsItemSelected(IMenuItem item)
+        {
+            TEST_PERIOD test_period;
+            switch (item.ItemId)
+            {
+                case Resource.Id.test_period_30sec:
+                    test_period = TEST_PERIOD.SEC30;
+                    break;
+                case Resource.Id.test_period_1min:
+                    test_period = TEST_PERIOD.MIN01;
+                    break;
+                case Resource.Id.test_period_3min:
+                    test_period = TEST_PERIOD.MIN03;
+                    break;
+                case Resource.Id.test_period_5min:
+                    test_period = TEST_PERIOD.MIN05;
+                    break;
+                case Resource.Id.test_period_10min:
+                    test_period = TEST_PERIOD.MIN10;
+                    break;
+                default:
+                    return base.OnOptionsItemSelected(item);
+            }
+            TestTimePeriod = (Int16)test_period;
+            RunOnUiThread(() =>
+            {
+                TestTimeTextView.SetText(string.Format("{0:0#}:{1:0#}", TestTimePeriod / 60, TestTimePeriod % 60), TextView.BufferType.Normal);
+            });
+            return true;
+        }
+
         void ModeChangeButtonHandler(object sender, EventArgs e)
         {
             if (ActivityStatus == TEST_STATUS.STANDBY)
@@ -105,7 +146,7 @@ namespace UsbSerialExamples
             }
             else
             {
-                FinishTest(null);
+                CancelTest();
             }
         }
 
@@ -118,6 +159,15 @@ namespace UsbSerialExamples
             ActivityStatusTextView.SetText(Resource.String.activity_status_testing);
             ModeChangeButton.SetText(Resource.String.test_cancel);
             TestTimeRemain = TestTimePeriod;
+        }
+
+        void CancelTest()
+        {
+            ActivityStatus = TEST_STATUS.STANDBY;
+            UpdateTestResultTimer.Dispose();
+            TestMainTimer.Dispose();
+            ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
+            ModeChangeButton.SetText(Resource.String.test_start);
         }
 
         void FinishTestHandler(Object sender)
@@ -135,15 +185,6 @@ namespace UsbSerialExamples
                     ModeChangeButton.SetText(Resource.String.test_start);
                 });
             }
-        }
-
-        void FinishTest(Object sender)
-        {
-            ActivityStatus = TEST_STATUS.STANDBY;
-            UpdateTestResultTimer.Dispose();
-            TestMainTimer.Dispose();
-            ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
-            ModeChangeButton.SetText(Resource.String.test_start);
         }
 
         void StartTestMainTimer()
