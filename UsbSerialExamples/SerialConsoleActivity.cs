@@ -52,7 +52,7 @@ namespace UsbSerialExamples
 
         TEST_STATUS ActivityStatus;
         ScrollView ScrollView;
-        CheckNmeaCheckSum CheckInstance;
+        CheckData CheckInstance;
 
         String DeviceName;
         Boolean IsCdcDevice;
@@ -135,7 +135,9 @@ namespace UsbSerialExamples
             ModeChangeButton = (Button)FindViewById(Resource.Id.modeChange);
             ModeChangeButton.Click += ModeChangeButtonHandler;
 
-            CheckInstance = new CheckNmeaCheckSum();
+            //            CheckInstance = new CheckNmeaCheckSum();
+            CheckInstance = new CheckCyclic00ToFF();
+
 
             mUsbSerialPort.DataReceivedEventLinser += DataReceivedHandler;
         }
@@ -229,7 +231,7 @@ namespace UsbSerialExamples
             }
 //            mUsbSerialPort.Close();
             mUsbSerialPort.Baudrate = TransfarRate;
-//            mUsbSerialPort.Open();
+            mUsbSerialPort.ResetParameters();
             RunOnUiThread(() =>
                 TransfarRateValueTextView.SetText(TransfarRate.ToString(), TextView.BufferType.Normal)
             );
@@ -391,9 +393,9 @@ namespace UsbSerialExamples
 
         public void UpdateReceivedData(byte[] data, int length)
         {
-            //string message = "Read " + length + " bytes: \n" + HexDump.DumpHexString(data, 0, length) + "\n\n";
-			//mDumpTextView.Append(message);
-			DumpTextView.Append(System.Text.Encoding.Default.GetString(data, 0, length));
+            string message = "Read " + length + " bytes: \n" + HexDump.DumpHexString(data, 0, length) + "\n\n";
+			DumpTextView.Append(message);
+//			DumpTextView.Append(System.Text.Encoding.Default.GetString(data, 0, length));
             ScrollView.SmoothScrollTo(0, DumpTextView.Bottom);
         }
 
@@ -507,6 +509,76 @@ namespace UsbSerialExamples
             {
                 return (byte)((c & 0x0f) + 9);
             }
+        }
+    }
+
+
+    class CheckCyclic00ToFF : CheckData
+    {
+        enum STATE : byte { IDLE, DATA };
+
+        public override string TestMode { get { return "Cyclic 0x00 to 0xFF"; } }
+        public override string GoodCountString { get { return goodCount.ToString(); } }
+        public override string ErrorCountString { get { return errorCount.ToString(); } }
+        public override string TotalCountString { get { return totalCount.ToString(); } }
+        STATE state = STATE.IDLE;
+        Int64 goodCount = 0;
+        Int64 errorCount = 0;
+        Int64 totalCount = 0;
+        Object thisLock = new Object();
+
+        static byte LastData;
+
+
+        public override void ResetProc()
+        {
+            goodCount = 0;
+            errorCount = 0;
+            totalCount = 0;
+            state = STATE.IDLE;
+        }
+
+        public override void ProcData(byte data)
+        {
+            switch (state)
+            {
+                case STATE.IDLE:
+                    if (0x00 == data)
+                    {
+                        state = STATE.DATA;
+                        LastData = data;
+                    }
+                    break;
+                case STATE.DATA:
+                    if (0x00 == data)
+                    {
+                        if (0xFF == LastData)
+                        {
+                            goodCount += 1;
+                            LastData = data;
+                        }
+                        else
+                        {
+                            errorCount += 1;
+                            LastData = data;
+                        }
+
+                    }
+                    else
+                    {
+                        if (data - 1 == LastData)
+                        {
+                            LastData = data;
+                        }
+                        else
+                        {
+                            errorCount += 1;
+                            state = STATE.IDLE;
+                        }
+                    }
+                    break;
+            }
+            
         }
     }
 }
