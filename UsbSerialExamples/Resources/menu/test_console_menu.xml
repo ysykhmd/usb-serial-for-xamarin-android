@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
   <item
-       android:id="@+id/menu_cut"
+       android:id="@+id/menu_test_period"
        android:showAsAction="never"
        android:title="@string/test_period_title">
     <menu>
@@ -34,9 +34,42 @@
   
   </item>
   <item
-       android:id="@+id/menu_copy"
+       android:id="@+id/menu_transfer_rate"
        android:showAsAction="never"
-       android:title="Copy" />
+       android:title="@string/transfer_rate_menu_title">
+    <menu>
+      <item
+        android:id="@+id/transfer_rate_4800"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_4800"
+        />
+      <item
+        android:id="@+id/transfer_rate_9600"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_9600"
+        />
+      <item
+        android:id="@+id/transfer_rate_19200"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_19200"
+        />
+      <item
+        android:id="@+id/transfer_rate_38400"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_38400"
+        />
+      <item
+        android:id="@+id/transfer_rate_57600"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_57600"
+        />
+      <item
+        android:id="@+id/transfer_rate_115200"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_115200"
+        />
+    </menu>
+  </item>
   <item
        android:id="@+id/menu_paste"
        android:showAsAction="never"

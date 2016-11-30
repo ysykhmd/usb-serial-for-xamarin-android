@@ -46,25 +46,38 @@ namespace UsbSerialExamples
         enum TEST_STATUS { STANDBY, TESTING }
         enum TEST_PERIOD : Int16{ SEC30 = 30, MIN01 = 60, MIN03 = 180, MIN05 = 300, MIN10 = 600 }
 
+        const int DEFAULT_TRANSFAR_RATE = 19200;
+
         static UsbSerialPort mUsbSerialPort = null;
 
         TEST_STATUS ActivityStatus;
-        TextView TitleTextView;
-        TextView DumpTextView;
         ScrollView ScrollView;
         CheckNmeaCheckSum CheckInstance;
 
+        String DeviceName;
+        Boolean IsCdcDevice;
         Timer UpdateTestResultTimer;
         Timer TestMainTimer;
         Int32 TestTimePeriod = 10; // 5 * 60;
         Int32 TestTimeRemain;
+        int TransfarRate;
 
+        TextView TitleTextView;
+        TextView TransfarRateTitleTextView;
+        TextView TransfarRateValueTextView;
         TextView ActivityStatusTextView;
         TextView TestTimeTextView;
         TextView RemainTimeTextView;
         TextView GoodCountTextView;
         TextView ErrorCountTextView;
         TextView TotalCountTextView;
+
+        TextView DumpTextView;
+
+        IMenuItem TestPeriodMenuItem;
+        IMenuItem TransfarRateMenuItem;
+
+
         Button ModeChangeButton;
 
         protected override void OnCreate(Bundle savedInstanceState)
@@ -76,7 +89,33 @@ namespace UsbSerialExamples
 
             ActivityStatus = TEST_STATUS.STANDBY;
 
+            TransfarRate = DEFAULT_TRANSFAR_RATE;
+
+            DeviceName = mUsbSerialPort.GetType().Name;
+
+            if (0 == String.Compare(DeviceName, 0, "Cdc", 0, 3))
+            {
+                IsCdcDevice = true;
+            }
+            else
+            {
+                IsCdcDevice = false;
+            }
+
             TitleTextView = (TextView)FindViewById(Resource.Id.demoTitle);
+
+            TransfarRateTitleTextView = (TextView)FindViewById(Resource.Id.title_transfar_rate);
+            TransfarRateValueTextView = (TextView)FindViewById(Resource.Id.transfar_rate_value);
+            if (IsCdcDevice)
+            {
+                TransfarRateTitleTextView.Enabled = false;
+                TransfarRateValueTextView.Enabled = false;
+            }
+            else
+            {
+                TransfarRateValueTextView.SetText(TransfarRate.ToString(), TextView.BufferType.Normal);
+            }
+
             DumpTextView = (TextView)FindViewById(Resource.Id.consoleText);
             ScrollView = (ScrollView)FindViewById(Resource.Id.demoScroller);
 
@@ -104,12 +143,37 @@ namespace UsbSerialExamples
         public override Boolean OnCreateOptionsMenu(IMenu menu)
         {
             MenuInflater.Inflate(Resource.Menu.test_console_menu, menu);
+
+            TestPeriodMenuItem = menu.FindItem(Resource.Id.menu_test_period);
+            TransfarRateMenuItem = menu.FindItem(Resource.Id.menu_transfer_rate);
+            if (IsCdcDevice)
+            {
+                TransfarRateMenuItem.SetEnabled(false);
+            }
+
+
             return base.OnPrepareOptionsMenu(menu);
         }
 
         public override bool OnOptionsItemSelected(IMenuItem item)
         {
+            if (CheckTestPeriodMenu(item))
+            {
+                return true;
+            }
+
+            if (CheckTransferRateMenu(item))
+            {
+                return true;
+            }
+
+            return base.OnOptionsItemSelected(item);
+        }
+
+        bool CheckTestPeriodMenu(IMenuItem item)
+        {
             TEST_PERIOD test_period;
+
             switch (item.ItemId)
             {
                 case Resource.Id.test_period_30sec:
@@ -128,13 +192,47 @@ namespace UsbSerialExamples
                     test_period = TEST_PERIOD.MIN10;
                     break;
                 default:
-                    return base.OnOptionsItemSelected(item);
+                    return false;
             }
             TestTimePeriod = (Int16)test_period;
             RunOnUiThread(() =>
+                TestTimeTextView.SetText(string.Format("{0:0#}:{1:0#}", TestTimePeriod / 60, TestTimePeriod % 60), TextView.BufferType.Normal)
+            );
+            return true;
+
+        }
+
+        bool CheckTransferRateMenu(IMenuItem item)
+        {
+            switch (item.ItemId)
             {
-                TestTimeTextView.SetText(string.Format("{0:0#}:{1:0#}", TestTimePeriod / 60, TestTimePeriod % 60), TextView.BufferType.Normal);
-            });
+                case Resource.Id.transfer_rate_4800:
+                    TransfarRate = 4800;
+                    break;
+                case Resource.Id.transfer_rate_9600:
+                    TransfarRate = 9600;
+                    break;
+                case Resource.Id.transfer_rate_19200:
+                    TransfarRate = 19200;
+                    break;
+                case Resource.Id.transfer_rate_38400:
+                    TransfarRate = 38400;
+                    break;
+                case Resource.Id.transfer_rate_57600:
+                    TransfarRate = 57600;
+                    break;
+                case Resource.Id.transfer_rate_115200:
+                    TransfarRate = 115200;
+                    break;
+                default:
+                    return false;
+            }
+//            mUsbSerialPort.Close();
+            mUsbSerialPort.Baudrate = TransfarRate;
+//            mUsbSerialPort.Open();
+            RunOnUiThread(() =>
+                TransfarRateValueTextView.SetText(TransfarRate.ToString(), TextView.BufferType.Normal)
+            );
             return true;
         }
 
@@ -159,6 +257,8 @@ namespace UsbSerialExamples
             ActivityStatusTextView.SetText(Resource.String.activity_status_testing);
             ModeChangeButton.SetText(Resource.String.test_cancel);
             TestTimeRemain = TestTimePeriod;
+            TestPeriodMenuItem.SetEnabled(false);
+            TransfarRateMenuItem.SetEnabled(false);
         }
 
         void CancelTest()
@@ -168,6 +268,12 @@ namespace UsbSerialExamples
             TestMainTimer.Dispose();
             ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
             ModeChangeButton.SetText(Resource.String.test_start);
+            TestPeriodMenuItem.SetEnabled(true);
+            if (!IsCdcDevice)
+            {
+                TransfarRateMenuItem.SetEnabled(true);
+            }
+
         }
 
         void FinishTestHandler(Object sender)
@@ -183,6 +289,11 @@ namespace UsbSerialExamples
                     ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
                     RemainTimeTextView.SetText(Resource.String.remain_time_normal_end);
                     ModeChangeButton.SetText(Resource.String.test_start);
+                    TestPeriodMenuItem.SetEnabled(true);
+                    if (!IsCdcDevice)
+                    {
+                        TransfarRateMenuItem.SetEnabled(true);
+                    }
                 });
             }
         }
@@ -242,9 +353,10 @@ namespace UsbSerialExamples
 				TitleTextView.Text = "No serial device.";
 			} else {
 				try {
-                    mUsbSerialPort.Baudrate = 19200;
+                    mUsbSerialPort.Baudrate = TransfarRate;
 					mUsbSerialPort.Open ();
-				} catch (Exception e) {
+                    TransfarRateValueTextView.SetText(TransfarRate.ToString(), TextView.BufferType.Normal);
+                } catch (Exception e) {
 					Log.Error (TAG, "Error setting up device: " + e.Message, e);
 					TitleTextView.Text = "Error opening device: " + e.Message;
 					try {
@@ -255,7 +367,7 @@ namespace UsbSerialExamples
 					mUsbSerialPort = null;
 					return;
 				}
-				TitleTextView.Text = "Serial device: " + mUsbSerialPort.GetType ().Name;
+				TitleTextView.Text = "Serial device: " + DeviceName;
 			}
 		}
 
@@ -297,6 +409,10 @@ namespace UsbSerialExamples
             Intent intent = new Intent(context, typeof(SerialConsoleActivity));
             intent.AddFlags(ActivityFlags.SingleTop | ActivityFlags.NoHistory);
             context.StartActivity(intent);
+        }
+
+        void DisplayTransfarRateMenu(bool state)
+        {
         }
     }
 
