@@ -4,8 +4,10 @@
   <string name="app_name">Serial Example</string>
   <string name="test_console_title">Test Console</string>
   <string name="refreshing">Refreshing...</string>
+  <string name="title_test_mode">Test mode: </string>
+  <string name="title_transfar_rate">Rate</string>
   <string name="title_status">Status</string>
-  <string name="title_test_time">Test time</string>
+  <string name="title_test_time">Test period</string>
   <string name="title_remain">Remain</string>
   <string name="title_good">Good</string>
   <string name="title_error">Error</string>
@@ -32,5 +34,7 @@
   <string name="transfer_rate_57600">57600bps</string>
   <string name="transfer_rate_115200"> 115200bps</string>
 
-  <string name="title_transfar_rate">Rate</string>
+  <string name="test_mode_menu_title">Test mode</string>
+  <string name="test_mode_nmew_check_sum">NMEA Check Sum</string>
+  <string name="test_mode_cyclic_0x00_to_0xff">Cyclic 0x00 to 0xFF</string>
 </resources>

@@ -62,6 +62,7 @@ namespace UsbSerialExamples
         Int32 TestTimeRemain;
         int TransfarRate;
 
+        TextView TestModeTextView;
         TextView TitleTextView;
         TextView TransfarRateTitleTextView;
         TextView TransfarRateValueTextView;
@@ -102,7 +103,8 @@ namespace UsbSerialExamples
                 IsCdcDevice = false;
             }
 
-            TitleTextView = (TextView)FindViewById(Resource.Id.demoTitle);
+            TestModeTextView = (TextView)FindViewById(Resource.Id.test_mode);
+            TitleTextView = (TextView)FindViewById(Resource.Id.serial_device_name);
 
             TransfarRateTitleTextView = (TextView)FindViewById(Resource.Id.title_transfar_rate);
             TransfarRateValueTextView = (TextView)FindViewById(Resource.Id.transfar_rate_value);
@@ -138,6 +140,7 @@ namespace UsbSerialExamples
             //            CheckInstance = new CheckNmeaCheckSum();
             CheckInstance = new CheckCyclic00ToFF();
 
+            TestModeTextView.SetText(CheckInstance.TestMode, TextView.BufferType.Normal);
 
             mUsbSerialPort.DataReceivedEventLinser += DataReceivedHandler;
         }
@@ -165,6 +168,11 @@ namespace UsbSerialExamples
             }
 
             if (CheckTransferRateMenu(item))
+            {
+                return true;
+            }
+
+            if (CheckTestModeMenu(item))
             {
                 return true;
             }
@@ -229,13 +237,32 @@ namespace UsbSerialExamples
                 default:
                     return false;
             }
-//            mUsbSerialPort.Close();
             mUsbSerialPort.Baudrate = TransfarRate;
             mUsbSerialPort.ResetParameters();
             RunOnUiThread(() =>
                 TransfarRateValueTextView.SetText(TransfarRate.ToString(), TextView.BufferType.Normal)
             );
             return true;
+        }
+
+        bool CheckTestModeMenu(IMenuItem item)
+        {
+            switch (item.ItemId)
+            {
+                case Resource.Id.test_mode_nmew_check_sum:
+                    CheckInstance = new CheckNmeaCheckSum();
+                    break;
+                case Resource.Id.test_mode_cyclic_0x00_to_0xff:
+                    CheckInstance = new CheckCyclic00ToFF();
+                    break;
+                default:
+                    return false;
+            }
+            RunOnUiThread(() =>
+                TestModeTextView.SetText(CheckInstance.TestMode, TextView.BufferType.Normal)
+            );
+            return true;
+
         }
 
         void ModeChangeButtonHandler(object sender, EventArgs e)
@@ -393,10 +420,10 @@ namespace UsbSerialExamples
 
         public void UpdateReceivedData(byte[] data, int length)
         {
-            string message = "Read " + length + " bytes: \n" + HexDump.DumpHexString(data, 0, length) + "\n\n";
-			DumpTextView.Append(message);
+//            string message = "Read " + length + " bytes: \n" + HexDump.DumpHexString(data, 0, length) + "\n\n";
+//			DumpTextView.Append(message);
 //			DumpTextView.Append(System.Text.Encoding.Default.GetString(data, 0, length));
-            ScrollView.SmoothScrollTo(0, DumpTextView.Bottom);
+//            ScrollView.SmoothScrollTo(0, DumpTextView.Bottom);
         }
 
         /**
