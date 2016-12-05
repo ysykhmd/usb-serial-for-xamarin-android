@@ -107,6 +107,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
             <TextView
+                android:id="@+id/title_good"
                 android:text="@string/title_good"
                 android:layout_weight="1"
                 android:layout_width="match_parent"
@@ -118,6 +119,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
             <TextView
+                android:id="@+id/title_error"
                 android:text="@string/title_error"
                 android:layout_weight="1"
                 android:layout_width="match_parent"
@@ -129,7 +131,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
             <TextView
-                android:text="@string/title_total"
+                android:id="@+id/title_total"
+                android:text="@string/title_total_receive"
                 android:layout_weight="1"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
