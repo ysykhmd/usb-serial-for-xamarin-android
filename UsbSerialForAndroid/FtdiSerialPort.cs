@@ -92,10 +92,10 @@ namespace Aid.UsbSerial
      */
 	public class FtdiSerialPort : UsbSerialPort
     {
-		/**
+        /**
          * FTDI chip types.
          */
-		private enum DeviceType
+        private enum DeviceType
 		{
 			TYPE_BM,
 			TYPE_AM,
@@ -192,23 +192,32 @@ namespace Aid.UsbSerial
          */
         private int FilterStatusBytes(byte[] src, byte[] dest, int totalBytesRead, int maxPacketSize)
         {
-            int packetsCount = totalBytesRead / maxPacketSize + (totalBytesRead % maxPacketSize == 0 ? 0 : 1);
-            for (int packetIdx = 0; packetIdx < packetsCount; ++packetIdx)
-            {
-                int count = (packetIdx == (packetsCount - 1))
-                        ? (totalBytesRead % maxPacketSize) - MODEM_STATUS_HEADER_LENGTH
-                        : maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
-                if (count > 0)
-                {
-                    Array.Copy(src,
-                            packetIdx * maxPacketSize + MODEM_STATUS_HEADER_LENGTH,
-                            dest,
-                            packetIdx * (maxPacketSize - MODEM_STATUS_HEADER_LENGTH),
-                            count);
-                }
-            }
+            int srcPtr = MODEM_STATUS_HEADER_LENGTH;
+            int destPtr = 0;
+            int validDataCount = maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
+            int count;
+            int rawDataCount = 0;
 
-            return totalBytesRead - (packetsCount * 2);
+            while(totalBytesRead > 0)
+            {
+                if (totalBytesRead > maxPacketSize)
+                {
+                    count = validDataCount;
+                    totalBytesRead -= maxPacketSize;
+                }
+                else
+                {
+                    count = totalBytesRead - MODEM_STATUS_HEADER_LENGTH;
+                    totalBytesRead = 0;
+                }
+                
+                Array.Copy(src, srcPtr, dest, destPtr, count);
+                srcPtr += maxPacketSize;
+                destPtr += validDataCount;
+
+                rawDataCount += count;
+            }
+            return rawDataCount;
         }
 
         public void Reset()
@@ -315,7 +324,10 @@ namespace Aid.UsbSerial
                     {
                         throw new IOException("Expected at least " + MODEM_STATUS_HEADER_LENGTH + " bytes");
                     }
-
+                    if (totalBytesRead > 350)
+                    {
+                        Log.Debug(TAG, "MaxPacketSize " + endpoint.MaxPacketSize);
+                    }
                     return FilterStatusBytes(mInternalReadBuffer, dest, totalBytesRead, endpoint.MaxPacketSize);
                 }
             }

@@ -248,6 +248,9 @@ namespace Aid.UsbSerial
 #if UseSmartThreadPool
         private object DoTasks()
 #else
+        /*
+         * mReadBuffer ÇÕ mTempReadBuffer ÇÊÇËëÂÇ´Ç¢Ç±Ç∆
+         */
         private WaitCallback DoTasks()
 #endif
         {
@@ -261,23 +264,34 @@ namespace Aid.UsbSerial
                     {
                         lock (mReadBufferLock)
                         {
-                            for (int i = 0; i < rxlen; i++)
+                            int remainBufferSize = DEFAULT_READ_BUFFER_SIZE - mReadBufferWriteCursor;
+
+                            if (rxlen > remainBufferSize)
                             {
-                                mReadBuffer[mReadBufferWriteCursor] = mTempReadBuffer[i];
-                                mReadBufferWriteCursor = (mReadBufferWriteCursor + 1) % mReadBuffer.Length;
-                                if (mReadBufferWriteCursor == mReadBufferReadCursor)
+                                int secondLength;
+                                System.Array.Copy(mTempReadBuffer, 0, mReadBuffer, mReadBufferWriteCursor, remainBufferSize);
+                                secondLength = rxlen - remainBufferSize;
+                                System.Array.Copy(mTempReadBuffer, remainBufferSize, mReadBuffer, 0, secondLength);
+                                mReadBufferWriteCursor = secondLength;
+                            }
+                            else
+                            {
+                                System.Array.Copy(mTempReadBuffer, 0, mReadBuffer, mReadBufferWriteCursor, rxlen);
+                                mReadBufferWriteCursor += rxlen;
+                                if (DEFAULT_READ_BUFFER_SIZE == mReadBufferWriteCursor)
                                 {
-                                    mReadBufferReadCursor = (mReadBufferReadCursor + 1) % mReadBuffer.Length;
+                                    mReadBufferWriteCursor = 0;
                                 }
                             }
                         }
+                        
                         if (DataReceivedEventLinser != null)
                         {
                             DataReceivedEventLinser(this, new DataReceivedEventArgs(this));
                         }
                     }
                 }
-                catch
+                catch (SystemException e)
                 {
                     _ContinueUpdating = false;
                     Close();
@@ -288,27 +302,72 @@ namespace Aid.UsbSerial
             return null;
         }
 
-
         public int Read(byte[] dest, int startIndex)
         {
-            int len = 0;
-            lock (mReadBufferLock)
+            int firstLength;
+            int validDataLength = mReadBufferWriteCursor - mReadBufferReadCursor;
+
+            /*
+             * à»â∫ÇÕçÇë¨âªÇÃÇΩÇﬂÇ…à”ê}ìIÇ…ä÷êîï™äÑÇµÇƒÇ¢Ç»Ç¢
+             */
+            if (mReadBufferWriteCursor < mReadBufferReadCursor)
             {
-                int pos = startIndex;
-                while ((mReadBufferReadCursor != mReadBufferWriteCursor) && (pos < dest.Length))
+                validDataLength += DEFAULT_READ_BUFFER_SIZE;
+                if (validDataLength > dest.Length)
                 {
-                    dest[pos] = mReadBuffer[mReadBufferReadCursor];
-                    len++;
-                    pos++;
-                    mReadBufferReadCursor = (mReadBufferReadCursor + 1) % mReadBuffer.Length;
+                    validDataLength = dest.Length;
+                }
+
+                if (validDataLength + mReadBufferReadCursor > DEFAULT_READ_BUFFER_SIZE)
+                {
+                    firstLength = DEFAULT_READ_BUFFER_SIZE - mReadBufferReadCursor;
+
+                    System.Array.Copy(mReadBuffer, mReadBufferReadCursor, dest, startIndex, firstLength);
+                    System.Array.Copy(mReadBuffer, 0, dest, startIndex + firstLength, mReadBufferWriteCursor);
+                    mReadBufferReadCursor = mReadBufferWriteCursor;
+                }
+                else
+                {
+                    System.Array.Copy(mReadBuffer, mReadBufferReadCursor, dest, startIndex, validDataLength);
+                    mReadBufferReadCursor += validDataLength;
+                    if (DEFAULT_READ_BUFFER_SIZE == mReadBufferReadCursor)
+                    {
+                        mReadBufferReadCursor = 0;
+                    }
                 }
             }
-            return len;
+            else
+            {
+                if (validDataLength > dest.Length)
+                {
+                    validDataLength = dest.Length;
+                }
+
+                System.Array.Copy(mReadBuffer, mReadBufferReadCursor, dest, startIndex, validDataLength);
+                mReadBufferReadCursor += validDataLength;
+                if (DEFAULT_READ_BUFFER_SIZE == mReadBufferReadCursor)
+                {
+                    mReadBufferReadCursor = 0;
+                }
+            }
+
+            return validDataLength;
         }
 
         public void ResetParameters()
         {
             SetParameters(Baudrate, DataBits, StopBits, Parity);
+        }
+
+        public void ResetBuffer()
+        {
+            Object thisLock = new Object();
+
+            lock(thisLock)
+            {
+                mReadBufferReadCursor = 0;
+                mReadBufferWriteCursor = 0;
+            }
         }
 
         protected abstract int ReadInternal(byte[] dest, int timeoutMillis);
