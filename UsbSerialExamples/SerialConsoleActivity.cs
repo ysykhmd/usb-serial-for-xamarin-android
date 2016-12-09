@@ -46,8 +46,8 @@ namespace UsbSerialExamples
         enum TEST_STATUS { STANDBY, TESTING }
         enum TEST_PERIOD : Int16{ SEC10 = 10, SEC30 = 30, MIN01 = 60, MIN03 = 180, MIN05 = 300, MIN10 = 600 }
 
-        const int DEFAULT_TEST_PERIOD = (int)TEST_PERIOD.SEC10;
-        const int DEFAULT_TRANSFAR_RATE = 19200;
+        const int DEFAULT_TEST_PERIOD = (int)TEST_PERIOD.MIN01;
+        const int DEFAULT_TRANSFAR_RATE = 38400;
 
         public static UsbSerialPort UseUsbSerialPort = null;
 
@@ -85,6 +85,9 @@ namespace UsbSerialExamples
         IMenuItem TestModeMenuItem;
 
         Button ModeChangeButton;
+
+        static byte[] readDataBuffer = new byte[16384];
+
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -145,7 +148,8 @@ namespace UsbSerialExamples
             ModeChangeButton = (Button)FindViewById(Resource.Id.modeChange);
             ModeChangeButton.Click += ModeChangeButtonHandler;
 
-            CheckInstance = new CheckNmeaCheckSum();
+            //CheckInstance = new CheckNmeaCheckSum();
+            CheckInstance = new CheckCyclic00ToFF();
 
             TestModeTextView.SetText(CheckInstance.TestMode, TextView.BufferType.Normal);
 
@@ -460,14 +464,17 @@ namespace UsbSerialExamples
             Object thisLock = new Object();
             lock (thisLock)
             {
-                byte[] data = new byte[16384];
-                int length = e.Port.Read(data, 0);
-                RunOnUiThread(() => { UpdateReceivedData(data, length); });
+                int length = e.Port.Read(readDataBuffer, 0);
+//              if (length > 300)
+                {
+//                    Log.Debug(TAG, "ReadDataLength " + length);
+                }
+//              RunOnUiThread(() => { UpdateReceivedData(data, length); });
                 if (ActivityStatus == TEST_STATUS.TESTING)
                 {
                     for (int i = 0; i < length; i++)
                     {
-                        CheckInstance.ProcData(data[i]);
+                        CheckInstance.ProcData(readDataBuffer[i]);
                     }
                 }
             }
