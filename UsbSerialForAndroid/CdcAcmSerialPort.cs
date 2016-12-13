@@ -45,6 +45,7 @@ namespace Aid.UsbSerial
      */
 	internal class CdcAcmSerialPort : UsbSerialPort
     {
+        protected override int ReadInternalFtdi(int timeoutMillis) { return 0; }
         private const string Tag = "CdcAcmSerialPort";
 
         private static int USB_RECIP_INTERFACE = 0x01;
@@ -143,7 +144,7 @@ namespace Aid.UsbSerial
 			IsOpened = false;
         }
 
-        protected override int ReadInternal(byte[] dest, int timeoutMillis)
+        protected override int ReadInternal()
         {
             if (mEnableAsyncReads)
             {
@@ -151,8 +152,8 @@ namespace Aid.UsbSerial
                 try
                 {
                     request.Initialize(Connection, mReadEndpoint);
-                    ByteBuffer buf = ByteBuffer.Wrap(dest);
-                    if (!request.Queue(buf, dest.Length))
+                    ByteBuffer buf = ByteBuffer.Wrap(mTempReadBuffer);
+                    if (!request.Queue(buf, mTempReadBuffer.Length))
                     {
                         throw new IOException("Error queueing request.");
                     }
@@ -166,7 +167,7 @@ namespace Aid.UsbSerial
                     int nread = buf.Position();
                     if (nread > 0)
                     {
-                        //Log.Debug(Tag, HexDump.DumpHexString(dest, 0, Math.Min(32, dest.Length)));
+                        //Log.Debug(Tag, HexDump.DumpHexString(mTempReadBuffer, 0, Math.Min(32, mTempReadBuffer.Length)));
                         return nread;
                     }
                     else
@@ -183,23 +184,22 @@ namespace Aid.UsbSerial
             int numBytesRead;
             lock (mInternalReadBufferLock)
             {
-                int readAmt = Math.Min(dest.Length, mInternalReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(mReadEndpoint, mInternalReadBuffer, readAmt,
-                        timeoutMillis);
+                int readAmt = Math.Min(mTempReadBuffer.Length, mInternalReadBuffer.Length);
+                numBytesRead = Connection.BulkTransfer(mReadEndpoint, mInternalReadBuffer, readAmt, 0);
                 if (numBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
                     // We *should* use UsbRequest, except it has a bug/api oversight
                     // where there is no way to determine the number of bytes read
                     // in response :\ -- http://b.android.com/28023
-                    if (timeoutMillis == int.MaxValue)
+                    if (0 == int.MaxValue)
                     {
                         // Hack: Special case "~infinite timeout" as an error.
                         return -1;
                     }
                     return 0;
                 }
-                Array.Copy(mInternalReadBuffer, 0, dest, 0, numBytesRead);
+                Array.Copy(mInternalReadBuffer, 0, mTempReadBuffer, 0, numBytesRead);
             }
             return numBytesRead;
         }

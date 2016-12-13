@@ -92,6 +92,7 @@ namespace Aid.UsbSerial
      */
 	public class FtdiSerialPort : UsbSerialPort
     {
+        protected override int ReadInternal() { return 0; }
         /**
          * FTDI chip types.
          */
@@ -182,6 +183,10 @@ namespace Aid.UsbSerial
         {
         }
 
+        /*
+         * ガベージを増やさないために関数全体をReadInternal に組み込んだ
+         */
+
         /**
          * Filter FTDI status bytes from buffer
          * @param src The source buffer (which contains status bytes)
@@ -190,36 +195,44 @@ namespace Aid.UsbSerial
          * @param maxPacketSize The USB endpoint max packet size
          * @return The number of payload bytes
          */
+        /*
+         * ガベージを増やさないために関数内の自動変数は、すべて関数外で static 宣言する
+         */
+         /*
+        static int filterStatusSrcPtr;
+        static int filterStatusDestPtr;
+        static int filterStatusValidDataCount;
+        static int filterStatusCount;
+        static int filterStatusRawDataCount;
         private int FilterStatusBytes(byte[] src, byte[] dest, int totalBytesRead, int maxPacketSize)
         {
-            int srcPtr = MODEM_STATUS_HEADER_LENGTH;
-            int destPtr = 0;
-            int validDataCount = maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
-            int count;
-            int rawDataCount = 0;
+            filterStatusSrcPtr = MODEM_STATUS_HEADER_LENGTH;
+            filterStatusDestPtr = 0;
+            filterStatusValidDataCount = maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
+            filterStatusRawDataCount = 0;
 
-            while(totalBytesRead > 0)
+            while (totalBytesRead > 0)
             {
                 if (totalBytesRead > maxPacketSize)
                 {
-                    count = validDataCount;
+                    filterStatusCount = filterStatusValidDataCount;
                     totalBytesRead -= maxPacketSize;
                 }
                 else
                 {
-                    count = totalBytesRead - MODEM_STATUS_HEADER_LENGTH;
+                    filterStatusCount = totalBytesRead - MODEM_STATUS_HEADER_LENGTH;
                     totalBytesRead = 0;
                 }
-                
-                Array.Copy(src, srcPtr, dest, destPtr, count);
-                srcPtr += maxPacketSize;
-                destPtr += validDataCount;
 
-                rawDataCount += count;
+                Array.Copy(src, filterStatusSrcPtr, dest, filterStatusDestPtr, filterStatusCount);
+                filterStatusSrcPtr += maxPacketSize;
+                filterStatusDestPtr += filterStatusValidDataCount;
+
+                filterStatusRawDataCount += filterStatusCount;
             }
-            return rawDataCount;
+            return filterStatusRawDataCount;
         }
-
+        */
         public void Reset()
         {
             int result = Connection.ControlTransfer((UsbAddressing)FtdiDEVICE_OUT_REQTYPE, SIO_RESET_REQUEST, SIO_RESET_SIO, 0 /* index */, null, 0, USB_WRITE_TIMEOUT_MILLIS);
@@ -271,9 +284,22 @@ namespace Aid.UsbSerial
 			IsOpened = false;
         }
 
-        protected override int ReadInternal(byte[] dest, int timeoutMillis)
+        /*
+         * ガベージを増やさないために関数内の自動変数は、すべて関数外で static 宣言する
+         */
+        static UsbEndpoint readInternalEndpoint;
+        static int readInternalTotalBytesRead;
+
+        static int filterStatusSrcPtr;
+        static int filterStatusDestPtr;
+        static int filterStatusValidDataCount;
+        static int filterStatusCount;
+        static int filterStatusRawDataCount;
+        static int maxPacketSize;
+
+        protected override int ReadInternalFtdi(int timeoutMillis)
         {
-            UsbEndpoint endpoint = UsbDevice.GetInterface(0).GetEndpoint(0);
+            readInternalEndpoint = UsbDevice.GetInterface(0).GetEndpoint(0);
 
             if (ENABLE_ASYNC_READS)
             {
@@ -281,13 +307,13 @@ namespace Aid.UsbSerial
                 lock (mInternalReadBufferLock)
                 {
                     // mReadBuffer is only used for maximum read size.
-                    readAmt = Math.Min(dest.Length, mInternalReadBuffer.Length);
+                    readAmt = Math.Min(mTempReadBuffer.Length, mInternalReadBuffer.Length);
                 }
 
                 UsbRequest request = new UsbRequest();
-                request.Initialize(Connection, endpoint);
+                request.Initialize(Connection, readInternalEndpoint);
 
-                ByteBuffer buf = ByteBuffer.Wrap(dest);
+                ByteBuffer buf = ByteBuffer.Wrap(mTempReadBuffer);
                 if (!request.Queue(buf, readAmt))
                 {
                     throw new IOException("Error queueing request.");
@@ -302,7 +328,7 @@ namespace Aid.UsbSerial
                 int payloadBytesRead = buf.Position() - MODEM_STATUS_HEADER_LENGTH;
                 if (payloadBytesRead > 0)
                 {
-                    //Log.Debug(TAG, HexDump.DumpHexString(dest, 0, Math.Min(32, dest.Length)));
+                    //Log.Debug(TAG, HexDump.DumpHexString(mTempReadBuffer, 0, Math.Min(32, mTempReadBuffer.Length)));
                     return payloadBytesRead;
                 }
                 else
@@ -312,23 +338,52 @@ namespace Aid.UsbSerial
             }
             else
             {
-                int totalBytesRead;
-
-                lock (mInternalReadBufferLock)
+//              lock (mInternalReadBufferLock)
                 {
-                    int readAmt = Math.Min(dest.Length, mInternalReadBuffer.Length);
-                    totalBytesRead = Connection.BulkTransfer(endpoint, mInternalReadBuffer,
-                            readAmt, timeoutMillis);
+                    // Nexus5:データが読みだされるバッファが 256 の倍数以外では 57600bps 以上で Connection.BulkTransfer() が -1 を返す。原因は不明
+                    readInternalTotalBytesRead = Connection.BulkTransfer(readInternalEndpoint, mInternalReadBuffer,
+                            DEFAULT_INTERNAL_READ_BUFFER_SIZE, timeoutMillis);
 
-                    if (totalBytesRead < MODEM_STATUS_HEADER_LENGTH)
+                    if (readInternalTotalBytesRead < MODEM_STATUS_HEADER_LENGTH)
                     {
                         throw new IOException("Expected at least " + MODEM_STATUS_HEADER_LENGTH + " bytes");
                     }
-                    if (totalBytesRead > 350)
+//                    if (readInternalTotalBytesRead > 350)
+ //                   {
+   //                     Log.Debug(TAG, "TotalBytesRead " + readInternalTotalBytesRead);
+ //                   }
+                    /*
+                     * 以下は FilterStatusBytes() を組み込んだ
+                     * 関数呼び出しの際に引数として渡されるオブジェクトを生成しないための処置
+                     */
+                    // これがないとエラーが目に見えて増える
+                    maxPacketSize = readInternalEndpoint.MaxPacketSize;
+                    filterStatusSrcPtr = MODEM_STATUS_HEADER_LENGTH;
+                    filterStatusDestPtr = 0;
+                    filterStatusValidDataCount = maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
+                    filterStatusRawDataCount = 0;
+
+                    while (readInternalTotalBytesRead > 0)
                     {
-                        Log.Debug(TAG, "MaxPacketSize " + endpoint.MaxPacketSize);
+                        if (readInternalTotalBytesRead > maxPacketSize)
+                        {
+                            filterStatusCount = filterStatusValidDataCount;
+                            readInternalTotalBytesRead -= maxPacketSize;
+                        }
+                        else
+                        {
+                            filterStatusCount = readInternalTotalBytesRead - MODEM_STATUS_HEADER_LENGTH;
+                            readInternalTotalBytesRead = 0;
+                        }
+
+                        Array.Copy(mInternalReadBuffer, filterStatusSrcPtr, mTempReadBuffer, filterStatusDestPtr, filterStatusCount);
+                        filterStatusSrcPtr += maxPacketSize;
+                        filterStatusDestPtr += filterStatusValidDataCount;
+
+                        filterStatusRawDataCount += filterStatusCount;
                     }
-                    return FilterStatusBytes(mInternalReadBuffer, dest, totalBytesRead, endpoint.MaxPacketSize);
+                    return filterStatusRawDataCount;
+ //                   return FilterStatusBytes(mInternalReadBuffer, mTempReadBuffer, readInternalTotalBytesRead, readInternalEndpoint.MaxPacketSize);
                 }
             }
         }

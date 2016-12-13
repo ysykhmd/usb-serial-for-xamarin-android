@@ -37,7 +37,7 @@ namespace Aid.UsbSerial
 {
 	class Cp21xxSerialPort : UsbSerialPort
     {
-
+        protected override int ReadInternalFtdi(int timeoutMillis) { return 0; }
         private static string TAG = "Cp21xxSerialPort";
         private static int DEFAULT_BAUD_RATE = 9600;
 
@@ -158,13 +158,13 @@ namespace Aid.UsbSerial
 			IsOpened = false;
         }
 
-        protected override int ReadInternal(byte[] dest, int timeoutMillis)
+        protected override int ReadInternal()
         {
             int numBytesRead;
             lock (mInternalReadBufferLock)
             {
-                int readAmt = Math.Min(dest.Length, mInternalReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(mReadEndpoint, mInternalReadBuffer, readAmt, timeoutMillis);
+                int readAmt = Math.Min(mTempReadBuffer.Length, mInternalReadBuffer.Length);
+                numBytesRead = Connection.BulkTransfer(mReadEndpoint, mInternalReadBuffer, readAmt, 0);
                 if (numBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
@@ -173,7 +173,7 @@ namespace Aid.UsbSerial
                     // in response :\ -- http://b.android.com/28023
                     return 0;
                 }
-                Array.Copy(mInternalReadBuffer, 0, dest, 0, numBytesRead);
+                Array.Copy(mInternalReadBuffer, 0, mTempReadBuffer, 0, numBytesRead);
             }
             return numBytesRead;
         }
