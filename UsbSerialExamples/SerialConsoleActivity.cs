@@ -52,9 +52,14 @@ namespace UsbSerialExamples
 
         public static UsbSerialPort UseUsbSerialPort = null;
 
-        TEST_STATUS ActivityStatus;
+        volatile TEST_STATUS ActivityStatus;
         ScrollView ScrollView;
         CheckData CheckInstance;
+        CheckData CheckNmeaCheckSumInstance;
+        CheckData CheckCyclic00ToFFInstance;
+        CheckData CheckSendDataInstance;
+
+
 
         String DeviceName;
         Boolean IsCdcDevice;
@@ -63,7 +68,7 @@ namespace UsbSerialExamples
         Int32 TestTimePeriod = DEFAULT_TEST_PERIOD;
         Int32 TestTimeRemain;
         int TransfarRate;
-        int TestModeResourceId;
+        volatile int TestModeResourceId;
 
         TextView TestModeTextView;
         TextView TitleTextView;
@@ -149,12 +154,14 @@ namespace UsbSerialExamples
             ModeChangeButton = (Button)FindViewById(Resource.Id.modeChange);
             ModeChangeButton.Click += ModeChangeButtonHandler;
 
-            CheckInstance = new CheckNmeaCheckSum(this);
-//            CheckInstance = new CheckCyclic00ToFF(this);
-
-            TestModeTextView.SetText(CheckInstance.TestMode, TextView.BufferType.Normal);
-
             UseUsbSerialPort.DataReceivedEventLinser += DataReceivedHandler;
+
+            CheckNmeaCheckSumInstance = new CheckNmeaCheckSum(this);
+            CheckCyclic00ToFFInstance = new CheckCyclic00ToFF(this);
+            CheckSendDataInstance = new CheckSendData(this);
+
+            CheckInstance = CheckCyclic00ToFFInstance;
+            TestModeTextView.SetText(CheckInstance.TestMode, TextView.BufferType.Normal);
         }
 
         public override Boolean OnCreateOptionsMenu(IMenu menu)
@@ -273,7 +280,7 @@ namespace UsbSerialExamples
                     TitleErrorTextView.Visibility = ViewStates.Visible;
                     ErrorCountTextView.Visibility = ViewStates.Visible;
                     TitleTotalTextView.SetText(Resource.String.title_total_receive);
-                    CheckInstance = new CheckNmeaCheckSum(this);
+                    CheckInstance = CheckNmeaCheckSumInstance;
                     break;
                 case Resource.Id.test_mode_cyclic_0x00_to_0xff:
                     TestModeResourceId = Resource.Id.test_mode_cyclic_0x00_to_0xff;
@@ -282,7 +289,7 @@ namespace UsbSerialExamples
                     TitleErrorTextView.Visibility = ViewStates.Visible;
                     ErrorCountTextView.Visibility = ViewStates.Visible;
                     TitleTotalTextView.SetText(Resource.String.title_total_receive);
-                    CheckInstance = new CheckCyclic00ToFF(this);
+                    CheckInstance = CheckCyclic00ToFFInstance;
                     break;
                 case Resource.Id.test_mode_send_data:
                     TestModeResourceId = Resource.Id.test_mode_send_data;
@@ -291,7 +298,7 @@ namespace UsbSerialExamples
                     TitleErrorTextView.Visibility = ViewStates.Invisible;
                     ErrorCountTextView.Visibility = ViewStates.Gone;
                     TitleTotalTextView.SetText(Resource.String.title_total_send);
-                    CheckInstance = new CheckSendData(this);
+                    CheckInstance = CheckSendDataInstance;
                     break;
                 default:
                     return false;
@@ -357,7 +364,8 @@ namespace UsbSerialExamples
             Window.ClearFlags(WindowManagerFlags.KeepScreenOn);
         }
 
-        static Object FinishTestMainTimerHandlerLock = new Object();
+        Object FinishTestMainTimerHandlerLock = new Object();
+        Object UpdateTestResultDisplayLock = new Object();
         void FinishTestMainTimerHandler(Object sender)
         {
             lock (FinishTestMainTimerHandlerLock)
@@ -365,33 +373,36 @@ namespace UsbSerialExamples
                 ActivityStatus = TEST_STATUS.STANDBY;
                 UpdateTestResultTimer.Dispose();
                 TestMainTimer.Dispose();
-                RunOnUiThread(() =>
+                lock (UpdateTestResultDisplayLock)
                 {
-                    ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
-                    RemainTimeTextView.SetText(Resource.String.remain_time_normal_end);
-                    if (TestModeResourceId != Resource.Id.test_mode_send_data)
+                    RunOnUiThread(() =>
                     {
-                        GoodCountTextView.SetText(CheckInstance.GoodCountString, TextView.BufferType.Normal);
-                        ErrorCountTextView.SetText(CheckInstance.ErrorCountString, TextView.BufferType.Normal);
-                    }
-                    TotalCountTextView.SetText(CheckInstance.TotalCountString, TextView.BufferType.Normal);
-                    ModeChangeButton.SetText(Resource.String.test_start);
-                    TestPeriodMenuItem.SetEnabled(true);
-                    if (!IsCdcDevice)
-                    {
-                        TransfarRateMenuItem.SetEnabled(true);
-                    }
-                    TestModeMenuItem.SetEnabled(true);
-                    UpdateTestInfo("Test finish : " + DateTime.Now.ToString("HH:mm:ss.fff/") + CheckInstance.GoodCountString + "-" + CheckInstance.ErrorCountString + "-" + CheckInstance.TotalCountString + "\n");
-                });
-                Log.Debug(TAG, "Test finished : Error count " + CheckInstance.ErrorCountString);
+                        ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
+                        RemainTimeTextView.SetText(Resource.String.remain_time_normal_end);
+                        if (TestModeResourceId != Resource.Id.test_mode_send_data)
+                        {
+                            GoodCountTextView.SetText(CheckInstance.GoodCountString, TextView.BufferType.Normal);
+                            ErrorCountTextView.SetText(CheckInstance.ErrorCountString, TextView.BufferType.Normal);
+                        }
+                        TotalCountTextView.SetText(CheckInstance.TotalCountString, TextView.BufferType.Normal);
+                        ModeChangeButton.SetText(Resource.String.test_start);
+                        TestPeriodMenuItem.SetEnabled(true);
+                        if (!IsCdcDevice)
+                        {
+                            TransfarRateMenuItem.SetEnabled(true);
+                        }
+                        TestModeMenuItem.SetEnabled(true);
+                        // 以下の３行は、なぜか UI スレッド実行しないと Activity を異常終了させる
+                        UpdateTestInfo("Test finish : " + DateTime.Now.ToString("HH:mm:ss.fff/") + CheckInstance.GoodCountString + "-" + CheckInstance.ErrorCountString + "-" + CheckInstance.TotalCountString + "\n");
+                        Log.Debug(TAG, "Test finished : Error count " + CheckInstance.ErrorCountString);
+                        Window.ClearFlags(WindowManagerFlags.KeepScreenOn);
+                    });
+                }
                 if (TestModeResourceId == Resource.Id.test_mode_send_data)
                 {
                     ((CheckSendData)CheckInstance).StopSendData();
                 }
-                UpdateTestResultDisplay(null);
             }
-            Window.ClearFlags(WindowManagerFlags.KeepScreenOn);
         }
 
         void StartTestMainTimer()
@@ -404,7 +415,6 @@ namespace UsbSerialExamples
             UpdateTestResultTimer = new Timer(UpdateTestResultDisplay, this, 0, 1000);
         }
 
-        static Object UpdateTestResultDisplayLock = new Object();
         void UpdateTestResultDisplay(Object sender)
         {
             lock(UpdateTestResultDisplayLock)
@@ -661,7 +671,7 @@ namespace UsbSerialExamples
         Int64 totalCount = 0;
         Object thisLock = new Object();
 
-        static byte LastData;
+        byte LastData;
         SerialConsoleActivity parentActivity;
 
         public CheckCyclic00ToFF(SerialConsoleActivity activity)
@@ -746,9 +756,9 @@ namespace UsbSerialExamples
         
         Int64 goodCount = 0;
         Int64 errorCount = 0;
-        static Int64 totalCount = 0;
+        Int64 totalCount = 0;
 
-        static bool threadContinueFlag;
+        volatile bool threadContinueFlag;
 
         public override void ProcData(byte data) { }
         SerialConsoleActivity parentActivity;
