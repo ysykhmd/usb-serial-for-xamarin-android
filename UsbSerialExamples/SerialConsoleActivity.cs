@@ -334,7 +334,17 @@ namespace UsbSerialExamples
             TestModeMenuItem.SetEnabled(false);
             Log.Debug(TAG, "Test started ");
 
-            UpdateTestInfo("Test start  : " + DateTime.Now.ToString("HH:mm:ss.fff") + "/" + TransfarRate.ToString() + "\n");
+            string trancefarRate;
+            if (!IsCdcDevice)
+            {
+                trancefarRate = TransfarRate.ToString();
+            }
+            else
+            {
+                trancefarRate = "CDC";
+            }
+
+            UpdateTestInfo("Test start  : " + DateTime.Now.ToString("HH:mm:ss.fff") + "/" + trancefarRate + "\n");
             StartTestMainTimer();
             StartUpdateTestResultTimer();
             UseUsbSerialPort.ResetReadBuffer();
