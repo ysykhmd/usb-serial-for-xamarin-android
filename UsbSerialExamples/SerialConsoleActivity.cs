@@ -34,6 +34,7 @@ using Android.Widget;
 
 using Aid.UsbSerial;
 using System.Threading;
+using Android.Content.PM;
 
 namespace UsbSerialExamples
 {
@@ -44,7 +45,7 @@ namespace UsbSerialExamples
         const string TAG = "SerialConsoleActivity";
 
         enum TEST_STATUS { STANDBY, TESTING }
-        enum TEST_PERIOD : Int16{ SEC10 = 10, SEC30 = 30, MIN01 = 60, MIN03 = 180, MIN05 = 300, MIN10 = 600 }
+        enum TEST_PERIOD : Int16{ SEC10 = 10, SEC30 = 30, MIN01 = 60, MIN03 = 180, MIN05 = 300, MIN10 = 600, MIN30 = 1800 }
 
         const int DEFAULT_TEST_PERIOD = (int)TEST_PERIOD.MIN01;
         const int DEFAULT_TRANSFAR_RATE = 57600;
@@ -86,7 +87,7 @@ namespace UsbSerialExamples
 
         Button ModeChangeButton;
 
-        static byte[] readDataBuffer = new byte[16384];
+        byte[] readDataBuffer = new byte[16384];
 
 
         protected override void OnCreate(Bundle savedInstanceState)
@@ -148,8 +149,8 @@ namespace UsbSerialExamples
             ModeChangeButton = (Button)FindViewById(Resource.Id.modeChange);
             ModeChangeButton.Click += ModeChangeButtonHandler;
 
-            //CheckInstance = new CheckNmeaCheckSum();
-            CheckInstance = new CheckCyclic00ToFF(this);
+            CheckInstance = new CheckNmeaCheckSum(this);
+//            CheckInstance = new CheckCyclic00ToFF(this);
 
             TestModeTextView.SetText(CheckInstance.TestMode, TextView.BufferType.Normal);
 
@@ -214,6 +215,9 @@ namespace UsbSerialExamples
                     break;
                 case Resource.Id.test_period_10min:
                     test_period = TEST_PERIOD.MIN10;
+                    break;
+                case Resource.Id.test_period_30min:
+                    test_period = TEST_PERIOD.MIN30;
                     break;
                 default:
                     return false;
@@ -313,6 +317,7 @@ namespace UsbSerialExamples
 
         void StartTest()
         {
+            Window.AddFlags(WindowManagerFlags.KeepScreenOn);
             CheckInstance.ResetProc();
             ActivityStatusTextView.SetText(Resource.String.activity_status_testing);
             ModeChangeButton.SetText(Resource.String.test_cancel);
@@ -320,9 +325,9 @@ namespace UsbSerialExamples
             TestPeriodMenuItem.SetEnabled(false);
             TransfarRateMenuItem.SetEnabled(false);
             TestModeMenuItem.SetEnabled(false);
-            Log.Info(TAG, "Test started ");
+            Log.Debug(TAG, "Test started ");
 
-            UpdateErrorInfo("Test start  : " + DateTime.Now.ToString("G") + "\n");
+            UpdateTestInfo("Test start  : " + DateTime.Now.ToString("HH:mm:ss.fff") + "/" + TransfarRate.ToString() + "\n");
             StartTestMainTimer();
             StartUpdateTestResultTimer();
             UseUsbSerialPort.ResetReadBuffer();
@@ -343,12 +348,13 @@ namespace UsbSerialExamples
                 TransfarRateMenuItem.SetEnabled(true);
             }
             TestModeMenuItem.SetEnabled(true);
-            Log.Info(TAG, "Test canceld : Error count" + CheckInstance.ErrorCountString);
+            Log.Debug(TAG, "Test canceld : Error count" + CheckInstance.ErrorCountString);
             if (TestModeResourceId == Resource.Id.test_mode_send_data)
             {
                 ((CheckSendData)CheckInstance).StopSendData();
             }
-            UpdateErrorInfo("Test cancel : " + DateTime.Now.ToString("G") + "\n");
+            UpdateTestInfo("Test cancel : " + DateTime.Now.ToString("HH:mm:ss.fff/") + CheckInstance.GoodCountString + "-" + CheckInstance.ErrorCountString + "-" + CheckInstance.TotalCountString + "\n");
+            Window.ClearFlags(WindowManagerFlags.KeepScreenOn);
         }
 
         static Object FinishTestMainTimerHandlerLock = new Object();
@@ -376,15 +382,16 @@ namespace UsbSerialExamples
                         TransfarRateMenuItem.SetEnabled(true);
                     }
                     TestModeMenuItem.SetEnabled(true);
-                    UpdateErrorInfo("Test finish : " + DateTime.Now.ToString("G") + "\n");
+                    UpdateTestInfo("Test finish : " + DateTime.Now.ToString("HH:mm:ss.fff/") + CheckInstance.GoodCountString + "-" + CheckInstance.ErrorCountString + "-" + CheckInstance.TotalCountString + "\n");
                 });
-                Log.Info(TAG, "Test finished : Error count " + CheckInstance.ErrorCountString);
+                Log.Debug(TAG, "Test finished : Error count " + CheckInstance.ErrorCountString);
                 if (TestModeResourceId == Resource.Id.test_mode_send_data)
                 {
                     ((CheckSendData)CheckInstance).StopSendData();
                 }
                 UpdateTestResultDisplay(null);
             }
+            Window.ClearFlags(WindowManagerFlags.KeepScreenOn);
         }
 
         void StartTestMainTimer()
@@ -465,7 +472,8 @@ namespace UsbSerialExamples
 				}
 				TitleTextView.Text = "Serial device: " + DeviceName;
 			}
-		}
+            RequestedOrientation = ScreenOrientation.Portrait;
+        }
 
         /*
          * このイベントハンドラはかなり頻繁に呼び出されるため、
@@ -501,10 +509,11 @@ namespace UsbSerialExamples
 //            ScrollView.SmoothScrollTo(0, DumpTextView.Bottom);
         }
 
-        public void UpdateErrorInfo(String msg)
+        public void UpdateTestInfo(String msg)
         {
             DumpTextView.Append(msg);
             ScrollView.SmoothScrollTo(0, DumpTextView.Bottom);
+            Log.Info(TAG, "Test info : " + msg);
         }
 
         /**
@@ -713,7 +722,7 @@ namespace UsbSerialExamples
                             state = STATE.IDLE;
                             parentActivity.RunOnUiThread(() =>
                                 {
-                                    parentActivity.UpdateErrorInfo("Error : " + DateTime.Now.ToString("G") + "\n");
+                                    parentActivity.UpdateTestInfo("Error : " + DateTime.Now.ToString("HH:mm:ss.fff") + "\n");
                                 }
                             );
                         }

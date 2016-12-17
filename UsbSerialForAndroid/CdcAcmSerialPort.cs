@@ -45,7 +45,6 @@ namespace Aid.UsbSerial
      */
 	internal class CdcAcmSerialPort : UsbSerialPort
     {
-        protected override int ReadInternalFtdi(int timeoutMillis) { return 0; }
         private const string Tag = "CdcAcmSerialPort";
 
         private static int USB_RECIP_INTERFACE = 0x01;
@@ -152,8 +151,8 @@ namespace Aid.UsbSerial
                 try
                 {
                     request.Initialize(Connection, mReadEndpoint);
-                    ByteBuffer buf = ByteBuffer.Wrap(mTempReadBuffer);
-                    if (!request.Queue(buf, mTempReadBuffer.Length))
+                    ByteBuffer buf = ByteBuffer.Wrap(TempReadBuffer);
+                    if (!request.Queue(buf, TempReadBuffer.Length))
                     {
                         throw new IOException("Error queueing request.");
                     }
@@ -167,7 +166,7 @@ namespace Aid.UsbSerial
                     int nread = buf.Position();
                     if (nread > 0)
                     {
-                        //Log.Debug(Tag, HexDump.DumpHexString(mTempReadBuffer, 0, Math.Min(32, mTempReadBuffer.Length)));
+                        //Log.Debug(Tag, HexDump.DumpHexString(TempReadBuffer, 0, Math.Min(32, TempReadBuffer.Length)));
                         return nread;
                     }
                     else
@@ -184,8 +183,8 @@ namespace Aid.UsbSerial
             int numBytesRead;
             lock (mInternalReadBufferLock)
             {
-                int readAmt = Math.Min(mTempReadBuffer.Length, mInternalReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(mReadEndpoint, mInternalReadBuffer, readAmt, 0);
+                int readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
+                numBytesRead = Connection.BulkTransfer(mReadEndpoint, InternalReadBuffer, readAmt, 0);
                 if (numBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
@@ -199,7 +198,7 @@ namespace Aid.UsbSerial
                     }
                     return 0;
                 }
-                Array.Copy(mInternalReadBuffer, 0, mTempReadBuffer, 0, numBytesRead);
+                Array.Copy(InternalReadBuffer, 0, TempReadBuffer, 0, numBytesRead);
             }
             return numBytesRead;
         }
@@ -218,7 +217,7 @@ namespace Aid.UsbSerial
                 {
                     byte[] writeBuffer;
 
-                    writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
+                    writeLength = Math.Min(src.Length - offset, MainWriteBuffer.Length);
                     if (offset == 0)
                     {
                         writeBuffer = src;
@@ -226,8 +225,8 @@ namespace Aid.UsbSerial
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, offset, mWriteBuffer, 0, writeLength);
-                        writeBuffer = mWriteBuffer;
+                        Array.Copy(src, offset, MainWriteBuffer, 0, writeLength);
+                        writeBuffer = MainWriteBuffer;
                     }
 
                     amtWritten = Connection.BulkTransfer(mWriteEndpoint, writeBuffer, writeLength,

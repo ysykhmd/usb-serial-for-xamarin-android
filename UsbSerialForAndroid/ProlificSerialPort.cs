@@ -45,7 +45,6 @@ namespace Aid.UsbSerial
 {
     public class ProlificSerialPort : UsbSerialPort
     {
-        protected override int ReadInternalFtdi(int timeoutMillis) { return 0; }
         private const string TAG = "ProlificSerialPort";
 
         private const int USB_READ_TIMEOUT_MILLIS = 1000;
@@ -375,13 +374,13 @@ namespace Aid.UsbSerial
 
             lock (mInternalReadBufferLock)
             {
-                int readAmt = Math.Min(mTempReadBuffer.Length, mInternalReadBuffer.Length);
-                int numBytesRead = Connection.BulkTransfer(mReadEndpoint, mInternalReadBuffer, readAmt, 0);
+                int readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
+                int numBytesRead = Connection.BulkTransfer(mReadEndpoint, InternalReadBuffer, readAmt, 0);
                 if (numBytesRead < 0)
                 {
                     return 0;
                 }
-                Array.Copy(mInternalReadBuffer, 0, mTempReadBuffer, 0, numBytesRead);
+                Array.Copy(InternalReadBuffer, 0, TempReadBuffer, 0, numBytesRead);
                 return numBytesRead;
             }
         }
@@ -399,7 +398,7 @@ namespace Aid.UsbSerial
                 {
                     byte[] writeBuffer;
 
-                    writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
+                    writeLength = Math.Min(src.Length - offset, MainWriteBuffer.Length);
                     if (offset == 0)
                     {
                         writeBuffer = src;
@@ -407,8 +406,8 @@ namespace Aid.UsbSerial
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, offset, mWriteBuffer, 0, writeLength);
-                        writeBuffer = mWriteBuffer;
+                        Array.Copy(src, offset, MainWriteBuffer, 0, writeLength);
+                        writeBuffer = MainWriteBuffer;
                     }
 
                     amtWritten = Connection.BulkTransfer(mWriteEndpoint,

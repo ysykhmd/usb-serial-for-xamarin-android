@@ -24,9 +24,6 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Reflection;
-using Android.Hardware.Usb;
 
 namespace Aid.UsbSerial
 {

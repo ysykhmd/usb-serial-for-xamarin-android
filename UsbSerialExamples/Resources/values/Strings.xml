@@ -27,6 +27,7 @@
   <string name="test_period_3min">3min</string>
   <string name="test_period_5min">5min</string>
   <string name="test_period_10min">10min</string>
+  <string name="test_period_30min">30min</string>
 
   <string name="transfer_rate_menu_title">"Transfer rate"</string>
   <string name="transfer_rate_4800">4800bps</string>

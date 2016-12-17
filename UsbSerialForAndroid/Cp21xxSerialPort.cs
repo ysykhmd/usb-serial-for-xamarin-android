@@ -37,7 +37,6 @@ namespace Aid.UsbSerial
 {
 	class Cp21xxSerialPort : UsbSerialPort
     {
-        protected override int ReadInternalFtdi(int timeoutMillis) { return 0; }
         private static string TAG = "Cp21xxSerialPort";
         private static int DEFAULT_BAUD_RATE = 9600;
 
@@ -163,8 +162,8 @@ namespace Aid.UsbSerial
             int numBytesRead;
             lock (mInternalReadBufferLock)
             {
-                int readAmt = Math.Min(mTempReadBuffer.Length, mInternalReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(mReadEndpoint, mInternalReadBuffer, readAmt, 0);
+                int readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
+                numBytesRead = Connection.BulkTransfer(mReadEndpoint, InternalReadBuffer, readAmt, 0);
                 if (numBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
@@ -173,7 +172,7 @@ namespace Aid.UsbSerial
                     // in response :\ -- http://b.android.com/28023
                     return 0;
                 }
-                Array.Copy(mInternalReadBuffer, 0, mTempReadBuffer, 0, numBytesRead);
+                Array.Copy(InternalReadBuffer, 0, TempReadBuffer, 0, numBytesRead);
             }
             return numBytesRead;
         }
@@ -191,7 +190,7 @@ namespace Aid.UsbSerial
                 {
                     byte[] writeBuffer;
 
-                    writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
+                    writeLength = Math.Min(src.Length - offset, MainWriteBuffer.Length);
                     if (offset == 0)
                     {
                         writeBuffer = src;
@@ -199,8 +198,8 @@ namespace Aid.UsbSerial
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, offset, mWriteBuffer, 0, writeLength);
-                        writeBuffer = mWriteBuffer;
+                        Array.Copy(src, offset, MainWriteBuffer, 0, writeLength);
+                        writeBuffer = MainWriteBuffer;
                     }
 
                     amtWritten = Connection.BulkTransfer(mWriteEndpoint, writeBuffer, writeLength, timeoutMillis);

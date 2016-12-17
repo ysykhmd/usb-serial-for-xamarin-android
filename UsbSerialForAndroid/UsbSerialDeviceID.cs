@@ -27,8 +27,8 @@ namespace Aid.UsbSerial
 {
 	public struct UsbSerialDeviceID
 	{
-		public int VendorID;
-		public int ProductID;
+		public readonly int VendorID;
+		public readonly int ProductID;
 
 		public UsbSerialDeviceID(int vendorId, int productId)
 		{

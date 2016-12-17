@@ -26,6 +26,7 @@
 using System;
 using System.Threading;
 using Android.Hardware.Usb;
+using Android.Util;
 
 #if UseSmartThreadPool
 using Amib.Threading;
@@ -35,13 +36,24 @@ namespace Aid.UsbSerial
 {
     public abstract class UsbSerialPort
     {
-        // 256 の倍数以外では 57600bps 以上で FtdiSerailPort.cs の Connection.BulkTransfer() がエラーを返す。原因は不明
-        // 115200bps で安定動作させるには、実測で 1024 以上必要
-        public const int DEFAULT_INTERNAL_READ_BUFFER_SIZE = 8 * 1024;
+        private const string TAG = "UsbSerailPort";
+
+        /**
+         * バッファサイズについて
+         *   Nexus5(Android 5.1.1/LMY48B)+FT-232RL の組み合わせで
+         *     ・115200bps でそれなりに安定動作させるには、実測で InternalReadBuffer[] に 1024 以上必要
+         *     ・FtdiSerialPort.cs で呼び出している Connection.BulkTransfer() は、バッファのサイズが 256 の倍数以外では、ボーレートが 57600bps 以上でエラーを返す。原因は不明
+         *     ・InternalReadBuffer[] は 16384byte より大きくても使われることはない
+         *     ・57600,115200bps では InternalReadBuffer[] 一杯にデータが詰め込まれてくることがある。このときInternalReadBuffer[16384]とすると 57,600bps で 2.84..秒、
+         *       115200bps で 1.422..秒となる。データに時間情報を含む場合は要注意
+         *     ・InternalReadBuffer[4096] で 115200bps で 0x00-0xFF のデータを連続受信した場合、数分に一度エラーを起こす(30分に４回とか)。InternalReadBuffer[] のサイズ
+         *     　を調整しても、状況が大きく変わることがなかった
+         */
+        public const int DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024;
         // 変更する場合は FtdiSerailPort.cs の ReadInternal() 内の Connection.BulkTransfer() 呼び出し部分を注意。
         public const int DEFAULT_TEMP_READ_BUFFER_SIZE = DEFAULT_INTERNAL_READ_BUFFER_SIZE;
         // この値が小さいと、FT-232R で転送速度が速いとき、最初のデータがフォアグラウンドから読みだせないことがある。
-        public const int DEFAULT_READ_BUFFER_SIZE = 1 * DEFAULT_INTERNAL_READ_BUFFER_SIZE;
+        public const int DEFAULT_READ_BUFFER_SIZE = 16 * 1024;
         public const int DEFAULT_WRITE_BUFFER_SIZE = 16 * 1024;
         public const int DefaultBaudrate = 9600;
         public const int DefaultDataBits = 8;
@@ -60,28 +72,27 @@ namespace Aid.UsbSerial
         protected Object mWriteBufferLock = new Object();
 
         /** Internal read buffer.  Guarded by {@link #mReadBufferLock}. */
-        protected byte[] mInternalReadBuffer;
-        protected byte[] mTempReadBuffer;
-        protected byte[] mReadBuffer;
-        protected int mReadBufferWriteCursor;
-        protected int mReadBufferReadCursor;
+        protected byte[] InternalReadBuffer;
+        protected byte[] TempReadBuffer;
+        protected byte[] MainReadBuffer;
+        protected int MainReadBufferWriteCursor;
+        protected int MainReadBufferReadCursor;
 
         /** Internal write buffer.  Guarded by {@link #mWriteBufferLock}. */
-        protected byte[] mWriteBuffer;
+        protected byte[] MainWriteBuffer;
 
-        private int mDataBits;
+        private int dataBits;
 
         private volatile bool _ContinueUpdating;
         public bool IsOpened { get; protected set; }
         public int Baudrate { get; set; }
         public int DataBits
         {
-            get { return mDataBits; }
+            get { return dataBits; }
             set
             {
-                if (value < 5 || 8 < value)
-                    throw new ArgumentOutOfRangeException();
-                mDataBits = value;
+                if (value < 5 || 8 < value) { throw new ArgumentOutOfRangeException(); }
+                dataBits = value;
             }
         }
         public Parity Parity { get; set; }
@@ -106,12 +117,12 @@ namespace Aid.UsbSerial
             UsbDevice = device;
             mPortNumber = portNumber;
 
-            mInternalReadBuffer = new byte[DEFAULT_INTERNAL_READ_BUFFER_SIZE];
-            mTempReadBuffer = new byte[DEFAULT_TEMP_READ_BUFFER_SIZE];
-            mReadBuffer = new byte[DEFAULT_READ_BUFFER_SIZE];
-            mReadBufferReadCursor = 0;
-            mReadBufferWriteCursor = 0;
-            mWriteBuffer = new byte[DEFAULT_WRITE_BUFFER_SIZE];
+            InternalReadBuffer = new byte[DEFAULT_INTERNAL_READ_BUFFER_SIZE];
+            TempReadBuffer = new byte[DEFAULT_TEMP_READ_BUFFER_SIZE];
+            MainReadBuffer = new byte[DEFAULT_READ_BUFFER_SIZE];
+            MainReadBufferReadCursor = 0;
+            MainReadBufferWriteCursor = 0;
+            MainWriteBuffer = new byte[DEFAULT_WRITE_BUFFER_SIZE];
 
 #if UseSmartThreadPool
             ThreadPool  = threadPool;
@@ -146,13 +157,13 @@ namespace Aid.UsbSerial
          */
         public void SetReadBufferSize(int bufferSize)
         {
-            if (bufferSize == mInternalReadBuffer.Length)
+            if (bufferSize == InternalReadBuffer.Length)
             {
                 return;
             }
             lock (mInternalReadBufferLock)
             {
-                mInternalReadBuffer = new byte[bufferSize];
+                InternalReadBuffer = new byte[bufferSize];
             }
         }
 
@@ -166,11 +177,11 @@ namespace Aid.UsbSerial
         {
             lock (mWriteBufferLock)
             {
-                if (bufferSize == mWriteBuffer.Length)
+                if (bufferSize == MainWriteBuffer.Length)
                 {
                     return;
                 }
-                mWriteBuffer = new byte[bufferSize];
+                MainWriteBuffer = new byte[bufferSize];
             }
         }
 
@@ -258,7 +269,7 @@ namespace Aid.UsbSerial
         private object DoTasks()
 #else
         /*
-         * mReadBuffer は mTempReadBuffer より大きいこと
+         * MainReadBuffer は TempReadBuffer より大きいこと
          */
         private WaitCallback DoTasks()
 #endif
@@ -268,26 +279,29 @@ namespace Aid.UsbSerial
             {
                 try
                 {
-                    doTaskRxLen = ReadInternalFtdi(0);
+                    // FTDI:timeout は
+                    //   500 だと nexus5/0x00-0xff/ 57600, 115200bps を受信できない
+                    //   0 だと nexus5/0x00-0xff/57600bps/innerBuffer 16384byte でデータ受信のイベント発生の間隔が３秒近く、115200 bps だと 1.5秒程度開くことがある
+                    doTaskRxLen = ReadInternal();
                     if (doTaskRxLen > 0)
                     {
                         lock (mReadBufferLock)
                         {
-                            readRemainBufferSize = DEFAULT_READ_BUFFER_SIZE - mReadBufferWriteCursor;
+                            readRemainBufferSize = DEFAULT_READ_BUFFER_SIZE - MainReadBufferWriteCursor;
 
                             if (doTaskRxLen > readRemainBufferSize)
                             {
-                                Array.Copy(mTempReadBuffer, 0, mReadBuffer, mReadBufferWriteCursor, readRemainBufferSize);
-                                mReadBufferWriteCursor = doTaskRxLen - readRemainBufferSize;
-                                Array.Copy(mTempReadBuffer, readRemainBufferSize, mReadBuffer, 0, mReadBufferWriteCursor);
+                                Array.Copy(TempReadBuffer, 0, MainReadBuffer, MainReadBufferWriteCursor, readRemainBufferSize);
+                                MainReadBufferWriteCursor = doTaskRxLen - readRemainBufferSize;
+                                Array.Copy(TempReadBuffer, readRemainBufferSize, MainReadBuffer, 0, MainReadBufferWriteCursor);
                             }
                             else
                             {
-                                Array.Copy(mTempReadBuffer, 0, mReadBuffer, mReadBufferWriteCursor, doTaskRxLen);
-                                mReadBufferWriteCursor += doTaskRxLen;
-                                if (DEFAULT_READ_BUFFER_SIZE == mReadBufferWriteCursor)
+                                Array.Copy(TempReadBuffer, 0, MainReadBuffer, MainReadBufferWriteCursor, doTaskRxLen);
+                                MainReadBufferWriteCursor += doTaskRxLen;
+                                if (DEFAULT_READ_BUFFER_SIZE == MainReadBufferWriteCursor)
                                 {
-                                    mReadBufferWriteCursor = 0;
+                                    MainReadBufferWriteCursor = 0;
                                 }
                             }
                         }
@@ -300,6 +314,7 @@ namespace Aid.UsbSerial
                 }
                 catch (SystemException e)
                 {
+                    Log.Error(TAG, "Data read faild: " + e.Message, e);
                     _ContinueUpdating = false;
                     Close();
                 }
@@ -316,13 +331,14 @@ namespace Aid.UsbSerial
         static int readValidDataLength;
         public int Read(byte[] dest, int startIndex)
         {
-            readValidDataLength = mReadBufferWriteCursor - mReadBufferReadCursor;
+            readValidDataLength = MainReadBufferWriteCursor - MainReadBufferReadCursor;
+            // MainReadBuffer[] にアクセスするので、ここにロックは必要
             lock (mReadBufferLock)
             {
                 /*
                  * 以下は高速化のために意図的に関数分割していない
                  */
-                if (mReadBufferWriteCursor < mReadBufferReadCursor)
+                if (MainReadBufferWriteCursor < MainReadBufferReadCursor)
                 {
                     readValidDataLength += DEFAULT_READ_BUFFER_SIZE;
                     if (readValidDataLength > dest.Length)
@@ -330,21 +346,21 @@ namespace Aid.UsbSerial
                         readValidDataLength = dest.Length;
                     }
 
-                    if (readValidDataLength + mReadBufferReadCursor > DEFAULT_READ_BUFFER_SIZE)
+                    if (readValidDataLength + MainReadBufferReadCursor > DEFAULT_READ_BUFFER_SIZE)
                     {
-                        readFirstLength = DEFAULT_READ_BUFFER_SIZE - mReadBufferReadCursor;
+                        readFirstLength = DEFAULT_READ_BUFFER_SIZE - MainReadBufferReadCursor;
 
-                        Array.Copy(mReadBuffer, mReadBufferReadCursor, dest, startIndex, readFirstLength);
-                        Array.Copy(mReadBuffer, 0, dest, startIndex + readFirstLength, mReadBufferWriteCursor);
-                        mReadBufferReadCursor = mReadBufferWriteCursor;
+                        Array.Copy(MainReadBuffer, MainReadBufferReadCursor, dest, startIndex, readFirstLength);
+                        Array.Copy(MainReadBuffer, 0, dest, startIndex + readFirstLength, MainReadBufferWriteCursor);
+                        MainReadBufferReadCursor = MainReadBufferWriteCursor;
                     }
                     else
                     {
-                        Array.Copy(mReadBuffer, mReadBufferReadCursor, dest, startIndex, readValidDataLength);
-                        mReadBufferReadCursor += readValidDataLength;
-                        if (DEFAULT_READ_BUFFER_SIZE == mReadBufferReadCursor)
+                        Array.Copy(MainReadBuffer, MainReadBufferReadCursor, dest, startIndex, readValidDataLength);
+                        MainReadBufferReadCursor += readValidDataLength;
+                        if (DEFAULT_READ_BUFFER_SIZE == MainReadBufferReadCursor)
                         {
-                            mReadBufferReadCursor = 0;
+                            MainReadBufferReadCursor = 0;
                         }
                     }
                 }
@@ -355,11 +371,11 @@ namespace Aid.UsbSerial
                         readValidDataLength = dest.Length;
                     }
 
-                    Array.Copy(mReadBuffer, mReadBufferReadCursor, dest, startIndex, readValidDataLength);
-                    mReadBufferReadCursor += readValidDataLength;
-                    if (DEFAULT_READ_BUFFER_SIZE == mReadBufferReadCursor)
+                    Array.Copy(MainReadBuffer, MainReadBufferReadCursor, dest, startIndex, readValidDataLength);
+                    MainReadBufferReadCursor += readValidDataLength;
+                    if (DEFAULT_READ_BUFFER_SIZE == MainReadBufferReadCursor)
                     {
-                        mReadBufferReadCursor = 0;
+                        MainReadBufferReadCursor = 0;
                     }
                 }
             }
@@ -375,13 +391,12 @@ namespace Aid.UsbSerial
         {
             lock(mReadBufferLock)
             {
-                mReadBufferReadCursor = 0;
-                mReadBufferWriteCursor = 0;
+                MainReadBufferReadCursor = 0;
+                MainReadBufferWriteCursor = 0;
             }
         }
 
         protected abstract int ReadInternal();
-        protected abstract int ReadInternalFtdi(int timeoutMillis);
 
         public abstract int Write(byte[] src, int timeoutMillis);
 

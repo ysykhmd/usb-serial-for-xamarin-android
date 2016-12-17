@@ -34,15 +34,15 @@ namespace Aid.UsbSerial
 {
     public sealed class UsbSerialDevice
     {
-        public UsbManager UsbManager { get; private set; }
+        public UsbManager UsbManager { get; }
 
-        public UsbDevice UsbDevice { get; private set; }
+        public UsbDevice UsbDevice { get; }
 
-        public UsbSerialPort[] Ports { get; private set; }
+        public UsbSerialPort[] Ports { get; }
 
         public UsbSerialDeviceID ID { get; private set; }
 
-        public UsbSerialDeviceInfo Info { get; private set; }
+        public UsbSerialDeviceInfo Info { get; }
 
 #if UseSmartThreadPool
         public UsbSerialDevice(UsbManager usbManager, UsbDevice usbDevice, UsbSerialDeviceID id, UsbSerialDeviceInfo info, SmartThreadPool threadPool)
