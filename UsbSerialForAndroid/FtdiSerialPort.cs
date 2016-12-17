@@ -171,11 +171,16 @@ namespace Aid.UsbSerial
          */
         private static bool ENABLE_ASYNC_READS = false;
 
+        UsbEndpoint readEndpoint;
+        UsbEndpoint writeEndpoint;
+
+
         public FtdiSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)
         {
-            currentEndpoint = UsbDevice.GetInterface(0).GetEndpoint(0);
-            maxPacketSize = currentEndpoint.MaxPacketSize;
+            readEndpoint = UsbDevice.GetInterface(0).GetEndpoint(0);
+            writeEndpoint = UsbDevice.GetInterface(0).GetEndpoint(1);
+            maxPacketSize = readEndpoint.MaxPacketSize;
 
         }
 
@@ -230,10 +235,7 @@ namespace Aid.UsbSerial
 			IsOpened = false;
         }
 
-        /*
-         * ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
-         */
-        UsbEndpoint currentEndpoint;
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
         int totalBytesRead;
         int srcPtr;
         int destPtr;
@@ -254,7 +256,7 @@ namespace Aid.UsbSerial
                 }
 
                 UsbRequest request = new UsbRequest();
-                request.Initialize(Connection, currentEndpoint);
+                request.Initialize(Connection, readEndpoint);
 
                 ByteBuffer buf = ByteBuffer.Wrap(TempReadBuffer);
                 if (!request.Queue(buf, readAmt))
@@ -285,7 +287,7 @@ namespace Aid.UsbSerial
 //              lock (mInternalReadBufferLock)
                 {
                     // Nexus5:データが読みだされるバッファが 256 の倍数以外では 57600bps 以上で Connection.BulkTransfer() が -1 を返す。原因は不明
-                    totalBytesRead = Connection.BulkTransfer(currentEndpoint, InternalReadBuffer,
+                    totalBytesRead = Connection.BulkTransfer(readEndpoint, InternalReadBuffer,
                             DEFAULT_INTERNAL_READ_BUFFER_SIZE, 0);
 
                     if (totalBytesRead < MODEM_STATUS_HEADER_LENGTH)
@@ -333,11 +335,13 @@ namespace Aid.UsbSerial
             }
         }
 
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int writeSrcBufferOffset;
         public override int Write(byte[] src, int timeoutMillis)
         {
-            int offset = 0;
+            writeSrcBufferOffset = 0;
 
-            while (offset < src.Length)
+            while (writeSrcBufferOffset < src.Length)
             {
                 int writeLength;
                 int amtWritten;
@@ -346,32 +350,32 @@ namespace Aid.UsbSerial
                 {
                     byte[] writeBuffer;
 
-                    writeLength = Math.Min(src.Length - offset, MainWriteBuffer.Length);
-                    if (offset == 0)
+                    writeLength = Math.Min(src.Length - writeSrcBufferOffset, MainWriteBuffer.Length);
+                    if (writeSrcBufferOffset == 0)
                     {
                         writeBuffer = src;
                     }
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, offset, MainWriteBuffer, 0, writeLength);
+                        Array.Copy(src, writeSrcBufferOffset, MainWriteBuffer, 0, writeLength);
                         writeBuffer = MainWriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(currentEndpoint, writeBuffer, writeLength,
+                    amtWritten = Connection.BulkTransfer(writeEndpoint, writeBuffer, writeLength,
                             timeoutMillis);
                 }
 
                 if (amtWritten <= 0)
                 {
                     throw new IOException("Error writing " + writeLength
-                            + " bytes at offset " + offset + " length=" + src.Length);
+                            + " bytes at offset " + writeSrcBufferOffset + " length=" + src.Length);
                 }
 
                 Log.Debug(TAG, "Wrote amtWritten=" + amtWritten + " attempted=" + writeLength);
-                offset += amtWritten;
+                writeSrcBufferOffset += amtWritten;
             }
-            return offset;
+            return writeSrcBufferOffset;
         }
 
         private int SetBaudRate(int baudRate)
