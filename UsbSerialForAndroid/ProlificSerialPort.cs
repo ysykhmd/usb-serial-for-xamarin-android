@@ -31,12 +31,10 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 
 using Android.Hardware.Usb;
-using Android.OS;
 using Android.Util;
 
 using Java.Nio;
@@ -45,62 +43,57 @@ namespace Aid.UsbSerial
 {
     public class ProlificSerialPort : UsbSerialPort
     {
-        private const string TAG = "ProlificSerialPort";
+        const string TAG = "ProlificSerialPort";
 
-        private const int USB_READ_TIMEOUT_MILLIS = 1000;
-        private const int USB_WRITE_TIMEOUT_MILLIS = 5000;
+        const int USB_READ_TIMEOUT_MILLIS = 1000;
+        const int USB_WRITE_TIMEOUT_MILLIS = 5000;
 
-        private const int USB_RECIP_INTERFACE = 0x01;
+        const int USB_RECIP_INTERFACE = 0x01;
 
-        private const int ProlificVendorREAD_REQUEST = 0x01;
-        private const int ProlificVendorWRITE_REQUEST = 0x01;
+        const int ProlificVendorREAD_REQUEST = 0x01;
+        const int ProlificVendorWRITE_REQUEST = 0x01;
 
-        private const int ProlificVendorOUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeVendor;
+        const int ProlificVendorOUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeVendor;
 
-        private const int ProlificVendorIN_REQTYPE = (int)UsbAddressing.In | UsbConstants.UsbTypeVendor;
+        const int ProlificVendorIN_REQTYPE = (int)UsbAddressing.In | UsbConstants.UsbTypeVendor;
 
-        private const int ProlificCTRL_OUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
+        const int ProlificCTRL_OUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
 
-        private const int WRITE_ENDPOINT = 0x02;
-        private const int READ_ENDPOINT = 0x83;
-        private const int INTERRUPT_ENDPOINT = 0x81;
+        const int WRITE_ENDPOINT = 0x02;
+        const int READ_ENDPOINT = 0x83;
+        const int INTERRUPT_ENDPOINT = 0x81;
 
-        private const int FLUSH_RX_REQUEST = 0x08;
-        private const int FLUSH_TX_REQUEST = 0x09;
+        const int FLUSH_RX_REQUEST = 0x08;
+        const int FLUSH_TX_REQUEST = 0x09;
 
-        private const int SET_LINE_REQUEST = 0x20;
-        private const int SET_CONTROL_REQUEST = 0x22;
+        const int SET_LINE_REQUEST = 0x20;
+        const int SET_CONTROL_REQUEST = 0x22;
 
-        private const int CONTROL_DTR = 0x01;
-        private const int CONTROL_RTS = 0x02;
+        const int CONTROL_DTR = 0x01;
+        const int CONTROL_RTS = 0x02;
 
-        private const int STATUS_FLAG_CD = 0x01;
-        private const int STATUS_FLAG_DSR = 0x02;
-        private const int STATUS_FLAG_RI = 0x08;
-        private const int STATUS_FLAG_CTS = 0x80;
+        const int STATUS_FLAG_CD = 0x01;
+        const int STATUS_FLAG_DSR = 0x02;
+        const int STATUS_FLAG_RI = 0x08;
+        const int STATUS_FLAG_CTS = 0x80;
 
-        private const int STATUS_BUFFER_SIZE = 10;
-        private const int STATUS_BYTE_IDX = 8;
+        const int STATUS_BUFFER_SIZE = 10;
+        const int STATUS_BYTE_IDX = 8;
 
-        private const int DEVICE_TYPE_HX = 0;
-        private const int DEVICE_TYPE_0 = 1;
-        private const int DEVICE_TYPE_1 = 2;
+        const int DEVICE_TYPE_HX = 0;
+        const int DEVICE_TYPE_0 = 1;
+        const int DEVICE_TYPE_1 = 2;
 
-        private int mDeviceType = DEVICE_TYPE_HX;
+        int mDeviceType = DEVICE_TYPE_HX;
 
-        private UsbEndpoint mReadEndpoint;
-        private UsbEndpoint mWriteEndpoint;
-        private UsbEndpoint mInterruptEndpoint;
+        UsbEndpoint mReadEndpoint;
+        UsbEndpoint mWriteEndpoint;
+        UsbEndpoint mInterruptEndpoint;
 
-        private int mControlLinesValue = 0;
-
-        private int? mBaudRate, mDataBits;
-        StopBits? mStopBits;
-        Parity? mParity;
-
-        private int mStatus = 0;
+        volatile int mControlLinesValue = 0;
+        volatile int mStatus = 0;
         bool mStopReadStatusThread = false;
-        private IOException mReadStatusException = null;
+        IOException mReadStatusException = null;
 
         public ProlificSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)
@@ -171,27 +164,27 @@ namespace Aid.UsbSerial
             mControlLinesValue = newControlLinesValue;
         }
 
+
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        byte[] ReadStatusThreadBuffer = new byte[STATUS_BUFFER_SIZE];
+        int ReadStatusThreadReadBytesCount;
         private object ReadStatusThreadFunction()
         {
             try
             {
                 while (!mStopReadStatusThread)
                 {
-                    byte[] buffer = new byte[STATUS_BUFFER_SIZE];
-                    int readBytesCount = Connection.BulkTransfer(mInterruptEndpoint,
-                            buffer,
+                    ReadStatusThreadReadBytesCount = Connection.BulkTransfer(mInterruptEndpoint,
+                            ReadStatusThreadBuffer,
                             STATUS_BUFFER_SIZE,
                             500);
-                    if (readBytesCount > 0)
+                    if (ReadStatusThreadReadBytesCount == STATUS_BUFFER_SIZE)
                     {
-                        if (readBytesCount == STATUS_BUFFER_SIZE)
-                        {
-                            mStatus = buffer[STATUS_BYTE_IDX] & 0xff;
-                        }
-                        else
-                        {
-                            throw new IOException(string.Format("Invalid CTS / DSR / CD / RI status buffer received, expected {0} bytes, but received {1} bytes.", STATUS_BUFFER_SIZE, readBytesCount));
-                        }
+                        mStatus = ReadStatusThreadBuffer[STATUS_BYTE_IDX] & 0xff;
+                    }
+                    else if (ReadStatusThreadReadBytesCount > 0)
+                    {
+                        throw new IOException(string.Format("Invalid CTS / DSR / CD / RI status buffer received, expected {0} bytes, but received {1} bytes.", STATUS_BUFFER_SIZE, ReadStatusThreadReadBytesCount));
                     }
                 }
             }
@@ -207,9 +200,9 @@ namespace Aid.UsbSerial
             get
             {
                 /* throw and clear an exception which occured in the status read thread */
-                IOException readStatusException = mReadStatusException;
                 if (mReadStatusException != null)
                 {
+                    IOException readStatusException = mReadStatusException;
                     mReadStatusException = null;
                     throw readStatusException;
                 }
@@ -367,22 +360,20 @@ namespace Aid.UsbSerial
             }
         }
 
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int ReadInternalNumBytesRead;
         protected override int ReadInternal()
         {
             if (Connection == null)
-                return 0;
-
-            lock (mInternalReadBufferLock)
             {
-                int readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
-                int numBytesRead = Connection.BulkTransfer(mReadEndpoint, InternalReadBuffer, readAmt, 0);
-                if (numBytesRead < 0)
-                {
-                    return 0;
-                }
-                Array.Copy(InternalReadBuffer, 0, TempReadBuffer, 0, numBytesRead);
-                return numBytesRead;
+                return 0;
             }
+            ReadInternalNumBytesRead = Connection.BulkTransfer(mReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
+            if (ReadInternalNumBytesRead < 0)
+            {
+                return 0;
+            }
+            return ReadInternalNumBytesRead;
         }
 
         public override int Write(byte[] src, int timeoutMillis)
@@ -426,10 +417,14 @@ namespace Aid.UsbSerial
             return offset;
         }
 
+        int CurrentBaudRate;
+        int CurrentDataBits;
+        StopBits CurrentStopBits;
+        Parity CurrentParity;
         protected override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
         {
-            if ((mBaudRate == baudRate) && (mDataBits == dataBits)
-                    && (mStopBits == stopBits) && (mParity == parity))
+            if ((CurrentBaudRate == baudRate) && (CurrentDataBits == dataBits)
+                    && (CurrentStopBits == stopBits) && (CurrentParity == parity))
             {
                 // Make sure no action is performed if there is nothing to change
                 return;
@@ -488,10 +483,10 @@ namespace Aid.UsbSerial
 
             ResetDevice();
 
-            mBaudRate = baudRate;
-            mDataBits = dataBits;
-            mStopBits = stopBits;
-            mParity = parity;
+            CurrentBaudRate = baudRate;
+            CurrentDataBits = dataBits;
+            CurrentStopBits = stopBits;
+            CurrentParity = parity;
         }
 
         public override bool CD

@@ -184,7 +184,7 @@ namespace Aid.UsbSerial
             lock (mInternalReadBufferLock)
             {
                 int readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(mReadEndpoint, InternalReadBuffer, readAmt, 0);
+                numBytesRead = Connection.BulkTransfer(mReadEndpoint, InternalReadBuffer, readAmt, DEFAULT_READ_TIMEOUT_MILLISEC);
                 if (numBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.

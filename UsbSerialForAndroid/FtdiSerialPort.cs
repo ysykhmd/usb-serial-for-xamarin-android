@@ -288,7 +288,7 @@ namespace Aid.UsbSerial
                 {
                     // Nexus5:データが読みだされるバッファが 256 の倍数以外では 57600bps 以上で Connection.BulkTransfer() が -1 を返す。原因は不明
                     totalBytesRead = Connection.BulkTransfer(readEndpoint, InternalReadBuffer,
-                            DEFAULT_INTERNAL_READ_BUFFER_SIZE, 0);
+                            DEFAULT_INTERNAL_READ_BUFFER_SIZE, DEFAULT_READ_TIMEOUT_MILLISEC);
 
                     if (totalBytesRead < MODEM_STATUS_HEADER_LENGTH)
                     {

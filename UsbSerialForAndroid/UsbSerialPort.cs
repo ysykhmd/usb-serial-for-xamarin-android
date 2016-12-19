@@ -49,7 +49,7 @@ namespace Aid.UsbSerial
          *     ・InternalReadBuffer[4096] で 115200bps で 0x00-0xFF のデータを連続受信した場合、数分に一度エラーを起こす(30分に４回とか)。InternalReadBuffer[] のサイズ
          *     　を調整しても、状況が大きく変わることがなかった
          */
-        public const int DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024;
+        public const int DEFAULT_INTERNAL_READ_BUFFER_SIZE = 16 * 1024;
         // 変更する場合は FtdiSerailPort.cs の ReadInternal() 内の Connection.BulkTransfer() 呼び出し部分を注意。
         public const int DEFAULT_TEMP_READ_BUFFER_SIZE = DEFAULT_INTERNAL_READ_BUFFER_SIZE;
         // この値が小さいと、FT-232R で転送速度が速いとき、最初のデータがフォアグラウンドから読みだせないことがある。
@@ -59,6 +59,9 @@ namespace Aid.UsbSerial
         public const int DefaultDataBits = 8;
         public const Parity DefaultParity = Parity.None;
         public const StopBits DefaultStopBits = StopBits.One;
+
+        // データ受信タイムアウトの指定 (ms)
+        public const int DEFAULT_READ_TIMEOUT_MILLISEC = 0;
 
         public event EventHandler<DataReceivedEventArgs> DataReceivedEventLinser;
 
@@ -283,6 +286,7 @@ namespace Aid.UsbSerial
                     //   500 だと nexus5/0x00-0xff/ 57600, 115200bps を受信できない
                     //   0 だと nexus5/0x00-0xff/57600bps/innerBuffer 16384byte でデータ受信のイベント発生の間隔が３秒近く、115200 bps だと 1.5秒程度開くことがある
                     doTaskRxLen = ReadInternal();
+                    Log.Info(TAG, "Read Data Length : " + doTaskRxLen.ToString());
                     if (doTaskRxLen > 0)
                     {
                         lock (mReadBufferLock)

@@ -37,52 +37,52 @@ namespace Aid.UsbSerial
 {
 	class Cp21xxSerialPort : UsbSerialPort
     {
-        private static string TAG = "Cp21xxSerialPort";
-        private static int DEFAULT_BAUD_RATE = 9600;
+        const string TAG = "Cp21xxSerialPort";
+        const int DEFAULT_BAUD_RATE = 9600;
 
-        private static int USB_WRITE_TIMEOUT_MILLIS = 5000;
+        const int USB_WRITE_TIMEOUT_MILLIS = 5000;
 
         /*
          * Configuration Request Types
          */
-        private static int REQTYPE_HOST_TO_DEVICE = 0x41;
+        const int REQTYPE_HOST_TO_DEVICE = 0x41;
 
         /*
          * Configuration Request Codes
          */
-        private static int SilabsER_IFC_ENABLE_REQUEST_CODE = 0x00;
-        private static int SilabsER_SET_BAUDDIV_REQUEST_CODE = 0x01;
-        private static int SilabsER_SET_LINE_CTL_REQUEST_CODE = 0x03;
-        private static int SilabsER_SET_MHS_REQUEST_CODE = 0x07;
-        private static int SilabsER_SET_BAUDRATE = 0x1E;
-        private static int SilabsER_FLUSH_REQUEST_CODE = 0x12;
+        const int SilabsER_IFC_ENABLE_REQUEST_CODE = 0x00;
+        const int SilabsER_SET_BAUDDIV_REQUEST_CODE = 0x01;
+        const int SilabsER_SET_LINE_CTL_REQUEST_CODE = 0x03;
+        const int SilabsER_SET_MHS_REQUEST_CODE = 0x07;
+        const int SilabsER_SET_BAUDRATE = 0x1E;
+        const int SilabsER_FLUSH_REQUEST_CODE = 0x12;
 
-        private static int FLUSH_READ_CODE = 0x0a;
-        private static int FLUSH_WRITE_CODE = 0x05;
+        const int FLUSH_READ_CODE = 0x0a;
+        const int FLUSH_WRITE_CODE = 0x05;
 
         /*
          * SilabsER_IFC_ENABLE_REQUEST_CODE
          */
-        private static int UART_ENABLE = 0x0001;
-        private static int UART_DISABLE = 0x0000;
+        const int UART_ENABLE = 0x0001;
+        const int UART_DISABLE = 0x0000;
 
         /*
          * SilabsER_SET_BAUDDIV_REQUEST_CODE
          */
-        private static int BAUD_RATE_GEN_FREQ = 0x384000;
+        const int BAUD_RATE_GEN_FREQ = 0x384000;
 
         /*
          * SilabsER_SET_MHS_REQUEST_CODE
          */
-        private static int MCR_DTR = 0x0001;
-        private static int MCR_RTS = 0x0002;
-        private static int MCR_ALL = 0x0003;
+        const int MCR_DTR = 0x0001;
+        const int MCR_RTS = 0x0002;
+        const int MCR_ALL = 0x0003;
 
-        private static int CONTROL_WRITE_DTR = 0x0100;
-        private static int CONTROL_WRITE_RTS = 0x0200;
+        const int CONTROL_WRITE_DTR = 0x0100;
+        const int CONTROL_WRITE_RTS = 0x0200;
 
-        private UsbEndpoint mReadEndpoint;
-        private UsbEndpoint mWriteEndpoint;
+        private UsbEndpoint ReadEndpoint;
+        private UsbEndpoint WriteEndpoint;
 
         public Cp21xxSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)
@@ -122,11 +122,11 @@ namespace Aid.UsbSerial
                     { // UsbConstants.USB_ENDPOINT_XFER_BULK
                         if (ep.Direction == UsbAddressing.In)
                         { // UsbConstants.USB_DIR_IN
-                            mReadEndpoint = ep;
+                            ReadEndpoint = ep;
                         }
                         else
                         {
-                            mWriteEndpoint = ep;
+                            WriteEndpoint = ep;
                         }
                     }
                 }
@@ -137,11 +137,15 @@ namespace Aid.UsbSerial
 				ResetParameters();
 				openedSuccessfully = true;
             }
-			finally {
-				if (openedSuccessfully) {
+			finally
+            {
+				if (openedSuccessfully)
+                {
 					IsOpened = true;
 					StartUpdating ();
-				} else {
+				}
+                else
+                {
 					CloseConnection();
 				}
 			}
@@ -157,13 +161,13 @@ namespace Aid.UsbSerial
 			IsOpened = false;
         }
 
+        int numBytesRead;
         protected override int ReadInternal()
         {
-            int numBytesRead;
-            lock (mInternalReadBufferLock)
+            // 一つのスレッドの中の一つのループの中で呼出されているので、このロックは不要
+            //lock (mInternalReadBufferLock)
             {
-                int readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(mReadEndpoint, InternalReadBuffer, readAmt, 0);
+                numBytesRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
                 if (numBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
@@ -172,14 +176,14 @@ namespace Aid.UsbSerial
                     // in response :\ -- http://b.android.com/28023
                     return 0;
                 }
-                Array.Copy(InternalReadBuffer, 0, TempReadBuffer, 0, numBytesRead);
             }
             return numBytesRead;
         }
 
+        int offset = 0;
         public override int Write(byte[] src, int timeoutMillis)
         {
-            int offset = 0;
+            offset = 0;
 
             while (offset < src.Length)
             {
@@ -202,7 +206,7 @@ namespace Aid.UsbSerial
                         writeBuffer = MainWriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(mWriteEndpoint, writeBuffer, writeLength, timeoutMillis);
+                    amtWritten = Connection.BulkTransfer(WriteEndpoint, writeBuffer, writeLength, timeoutMillis);
                 }
                 if (amtWritten <= 0)
                 {
@@ -218,12 +222,13 @@ namespace Aid.UsbSerial
 
         private void setBaudRate(int baudRate)
         {
-            byte[] data = new byte[] {
+            byte[] data = new byte[]
+            {
                 (byte) ( baudRate & 0xff),
                 (byte) ((baudRate >> 8 ) & 0xff),
                 (byte) ((baudRate >> 16) & 0xff),
                 (byte) ((baudRate >> 24) & 0xff)
-        };
+            };
             int ret = Connection.ControlTransfer((UsbAddressing)REQTYPE_HOST_TO_DEVICE, SilabsER_SET_BAUDRATE, 0, 0, data, 4, USB_WRITE_TIMEOUT_MILLIS);
             if (ret < 0)
             {
