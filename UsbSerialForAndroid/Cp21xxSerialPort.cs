@@ -24,14 +24,10 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 
 using Android.Hardware.Usb;
-using Android.OS;
 using Android.Util;
-
-using Java.Nio;
 
 namespace Aid.UsbSerial
 {
@@ -50,12 +46,12 @@ namespace Aid.UsbSerial
         /*
          * Configuration Request Codes
          */
-        const int SilabsER_IFC_ENABLE_REQUEST_CODE = 0x00;
-        const int SilabsER_SET_BAUDDIV_REQUEST_CODE = 0x01;
-        const int SilabsER_SET_LINE_CTL_REQUEST_CODE = 0x03;
-        const int SilabsER_SET_MHS_REQUEST_CODE = 0x07;
-        const int SilabsER_SET_BAUDRATE = 0x1E;
-        const int SilabsER_FLUSH_REQUEST_CODE = 0x12;
+        const int SILABSER_IFC_ENABLE_REQUEST_CODE = 0x00;
+        const int SILABSER_SET_BAUDDIV_REQUEST_CODE = 0x01;
+        const int SILABSER_SET_LINE_CTL_REQUEST_CODE = 0x03;
+        const int SILABSER_SET_MHS_REQUEST_CODE = 0x07;
+        const int SILABSER_SET_BAUDRATE = 0x1E;
+        const int SILABSER_FLUSH_REQUEST_CODE = 0x12;
 
         const int FLUSH_READ_CODE = 0x0a;
         const int FLUSH_WRITE_CODE = 0x05;
@@ -81,15 +77,15 @@ namespace Aid.UsbSerial
         const int CONTROL_WRITE_DTR = 0x0100;
         const int CONTROL_WRITE_RTS = 0x0200;
 
-        private UsbEndpoint ReadEndpoint;
-        private UsbEndpoint WriteEndpoint;
+        UsbEndpoint ReadEndpoint;
+        UsbEndpoint WriteEndpoint;
 
         public Cp21xxSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)
         {
         }
 
-        private int SetConfigSingle(int request, int value)
+        int setConfigSingle(int request, int value)
         {
             return Connection.ControlTransfer((UsbAddressing)REQTYPE_HOST_TO_DEVICE, request, value, 0, null, 0, USB_WRITE_TIMEOUT_MILLIS);
         }
@@ -131,9 +127,9 @@ namespace Aid.UsbSerial
                     }
                 }
 
-                SetConfigSingle(SilabsER_IFC_ENABLE_REQUEST_CODE, UART_ENABLE);
-                SetConfigSingle(SilabsER_SET_MHS_REQUEST_CODE, MCR_ALL | CONTROL_WRITE_DTR | CONTROL_WRITE_RTS);
-                SetConfigSingle(SilabsER_SET_BAUDDIV_REQUEST_CODE, BAUD_RATE_GEN_FREQ / DEFAULT_BAUD_RATE);
+                setConfigSingle(SILABSER_IFC_ENABLE_REQUEST_CODE, UART_ENABLE);
+                setConfigSingle(SILABSER_SET_MHS_REQUEST_CODE, MCR_ALL | CONTROL_WRITE_DTR | CONTROL_WRITE_RTS);
+                setConfigSingle(SILABSER_SET_BAUDDIV_REQUEST_CODE, BAUD_RATE_GEN_FREQ / DEFAULT_BAUD_RATE);
 				ResetParameters();
 				openedSuccessfully = true;
             }
@@ -155,20 +151,21 @@ namespace Aid.UsbSerial
         {
 			StopUpdating ();
 
-			SetConfigSingle(SilabsER_IFC_ENABLE_REQUEST_CODE, UART_DISABLE);
+			setConfigSingle(SILABSER_IFC_ENABLE_REQUEST_CODE, UART_DISABLE);
 
 			CloseConnection ();
 			IsOpened = false;
         }
 
-        int numBytesRead;
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int numberOfByteRead;
         protected override int ReadInternal()
         {
-            // 一つのスレッドの中の一つのループの中で呼出されているので、このロックは不要
+            // 一つのスレッドからしか呼出されないので、このロックは不要
             //lock (mInternalReadBufferLock)
             {
-                numBytesRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
-                if (numBytesRead < 0)
+                numberOfByteRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
+                if (numberOfByteRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
                     // We *should* use UsbRequest, except it has a bug/api oversight
@@ -177,50 +174,48 @@ namespace Aid.UsbSerial
                     return 0;
                 }
             }
-            return numBytesRead;
+            return numberOfByteRead;
         }
 
-        int offset = 0;
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int mainWriteBufferOffsetPointer;
+        int writeLength;
+        int amtWritten;
+        byte[] writeBuffer;
         public override int Write(byte[] src, int timeoutMillis)
         {
-            offset = 0;
+            mainWriteBufferOffsetPointer = 0;
 
-            while (offset < src.Length)
+            lock (WriteBufferLock)
             {
-                int writeLength;
-                int amtWritten;
-
-                lock (mWriteBufferLock)
+                while (mainWriteBufferOffsetPointer < src.Length)
                 {
-                    byte[] writeBuffer;
-
-                    writeLength = Math.Min(src.Length - offset, MainWriteBuffer.Length);
-                    if (offset == 0)
+                    writeLength = Math.Min(src.Length - mainWriteBufferOffsetPointer, MainWriteBuffer.Length);
+                    if (mainWriteBufferOffsetPointer == 0)
                     {
                         writeBuffer = src;
                     }
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, offset, MainWriteBuffer, 0, writeLength);
+                        Array.Copy(src, mainWriteBufferOffsetPointer, MainWriteBuffer, 0, writeLength);
                         writeBuffer = MainWriteBuffer;
                     }
 
                     amtWritten = Connection.BulkTransfer(WriteEndpoint, writeBuffer, writeLength, timeoutMillis);
+                    if (amtWritten <= 0)
+                    {
+                        throw new IOException("Error writing " + writeLength
+                                + " bytes at offset " + mainWriteBufferOffsetPointer + " length=" + src.Length);
+                    }
+//                    Log.Debug(TAG, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
+                    mainWriteBufferOffsetPointer += amtWritten;
                 }
-                if (amtWritten <= 0)
-                {
-                    throw new IOException("Error writing " + writeLength
-                            + " bytes at offset " + offset + " length=" + src.Length);
-                }
-
-                Log.Debug(TAG, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
-                offset += amtWritten;
             }
-            return offset;
+            return mainWriteBufferOffsetPointer;
         }
 
-        private void setBaudRate(int baudRate)
+        void setBaudRate(int baudRate)
         {
             byte[] data = new byte[]
             {
@@ -229,7 +224,7 @@ namespace Aid.UsbSerial
                 (byte) ((baudRate >> 16) & 0xff),
                 (byte) ((baudRate >> 24) & 0xff)
             };
-            int ret = Connection.ControlTransfer((UsbAddressing)REQTYPE_HOST_TO_DEVICE, SilabsER_SET_BAUDRATE, 0, 0, data, 4, USB_WRITE_TIMEOUT_MILLIS);
+            int ret = Connection.ControlTransfer((UsbAddressing)REQTYPE_HOST_TO_DEVICE, SILABSER_SET_BAUDRATE, 0, 0, data, 4, USB_WRITE_TIMEOUT_MILLIS);
             if (ret < 0)
             {
                 throw new IOException("Error setting baud rate.");
@@ -279,7 +274,7 @@ namespace Aid.UsbSerial
                     configDataBits |= 2;
                     break;
             }
-            SetConfigSingle(SilabsER_SET_LINE_CTL_REQUEST_CODE, configDataBits);
+            setConfigSingle(SILABSER_SET_LINE_CTL_REQUEST_CODE, configDataBits);
         }
 
         public override bool CD
@@ -343,7 +338,7 @@ namespace Aid.UsbSerial
 
             if (value != 0)
             {
-                SetConfigSingle(SilabsER_FLUSH_REQUEST_CODE, value);
+                setConfigSingle(SILABSER_FLUSH_REQUEST_CODE, value);
             }
 
             return true;
