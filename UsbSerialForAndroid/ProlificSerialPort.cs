@@ -50,12 +50,11 @@ namespace Aid.UsbSerial
 
         const int USB_RECIP_INTERFACE = 0x01;
 
-        const int ProlificVendorREAD_REQUEST = 0x01;
-        const int ProlificVendorWRITE_REQUEST = 0x01;
+        const int VENDOR_READ_REQUEST_TYPE = (int)UsbAddressing.In | UsbConstants.UsbTypeVendor;
+        const int VENDOR_READ_REQUEST = 0x01;
 
-        const int ProlificVendorOUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeVendor;
-
-        const int ProlificVendorIN_REQTYPE = (int)UsbAddressing.In | UsbConstants.UsbTypeVendor;
+        const int VENDOR_WRITE_REQUEST_TYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeVendor;
+        const int VENDOR_WRITE_REQUEST = 0x01;
 
         const int ProlificCTRL_OUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
 
@@ -84,7 +83,7 @@ namespace Aid.UsbSerial
         const int DEVICE_TYPE_0 = 1;
         const int DEVICE_TYPE_1 = 2;
 
-        int mDeviceType = DEVICE_TYPE_HX;
+        int mDeviceType;
 
         UsbEndpoint mReadEndpoint;
         UsbEndpoint mWriteEndpoint;
@@ -125,12 +124,12 @@ namespace Aid.UsbSerial
 
         private byte[] VendorIn(int value, int index, int length)
         {
-            return InControlTransfer(ProlificVendorIN_REQTYPE, ProlificVendorREAD_REQUEST, value, index, length);
+            return InControlTransfer(VENDOR_READ_REQUEST_TYPE, VENDOR_READ_REQUEST, value, index, length);
         }
 
         private void VendorOut(int value, int index, byte[] data)
         {
-            OutControlTransfer(ProlificVendorOUT_REQTYPE, ProlificVendorWRITE_REQUEST, value, index, data);
+            OutControlTransfer(VENDOR_WRITE_REQUEST_TYPE, VENDOR_WRITE_REQUEST, value, index, data);
         }
 
         private void ResetDevice()
@@ -276,6 +275,7 @@ namespace Aid.UsbSerial
                     }
                     catch (Exception e)
                     {
+                        mDeviceType = DEVICE_TYPE_HX;
                         Log.Error(TAG, "An unexpected exception occured while trying "
                                 + "to detect PL2303 subtype", e);
                     }
@@ -385,7 +385,7 @@ namespace Aid.UsbSerial
                 int writeLength;
                 int amtWritten;
 
-                lock (mWriteBufferLock)
+                lock (WriteBufferLock)
                 {
                     byte[] writeBuffer;
 
