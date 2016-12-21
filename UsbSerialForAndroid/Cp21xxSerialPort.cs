@@ -162,7 +162,7 @@ namespace Aid.UsbSerial
         protected override int ReadInternal()
         {
             // 一つのスレッドからしか呼出されないので、このロックは不要
-            //lock (mInternalReadBufferLock)
+            //lock (InternalReadBufferLock)
             {
                 numberOfByteRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
                 if (numberOfByteRead < 0)

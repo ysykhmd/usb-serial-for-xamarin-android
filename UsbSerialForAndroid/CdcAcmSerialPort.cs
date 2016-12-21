@@ -180,7 +180,7 @@ namespace Aid.UsbSerial
             }
 
             // 一つのスレッドからしか呼出されないので、このロックは不要
-            // lock (mInternalReadBufferLock)
+            // lock (InternalReadBufferLock)
             {
                 numberOfBytesRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
                 if (numberOfBytesRead < 0)

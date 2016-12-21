@@ -249,7 +249,7 @@ namespace Aid.UsbSerial
             if (ENABLE_ASYNC_READS)
             {
                 int readAmt;
-                lock (mInternalReadBufferLock)
+                lock (InternalReadBufferLock)
                 {
                     // MainReadBuffer is only used for maximum read size.
                     readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
@@ -284,7 +284,7 @@ namespace Aid.UsbSerial
             else
             {
                 // 一つのスレッドの中の一つのループの中で呼出されているので、このロックは不要
-//              lock (mInternalReadBufferLock)
+//              lock (InternalReadBufferLock)
                 {
                     // Nexus5:データが読みだされるバッファが 256 の倍数以外では 57600bps 以上で Connection.BulkTransfer() が -1 を返す。原因は不明
                     totalBytesRead = Connection.BulkTransfer(readEndpoint, InternalReadBuffer,

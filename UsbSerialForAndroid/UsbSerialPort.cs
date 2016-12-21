@@ -72,16 +72,16 @@ namespace Aid.UsbSerial
 
         public event EventHandler<DataReceivedEventArgs> DataReceivedEventLinser;
 
-        protected int mPortNumber;
+        protected int CurrentPortNumber;
 
         // non-null when open()
         protected UsbDeviceConnection Connection { get; set; }
 
-        protected Object mInternalReadBufferLock = new Object();
-        protected Object mReadBufferLock = new Object();
+        protected Object InternalReadBufferLock = new Object();
+        protected Object ReadBufferLock = new Object();
         protected Object WriteBufferLock = new Object();
 
-        /** Internal read buffer.  Guarded by {@link #mReadBufferLock}. */
+        /** Internal read buffer.  Guarded by {@link #ReadBufferLock}. */
         protected byte[] InternalReadBuffer;
         protected byte[] TempReadBuffer;
         protected byte[] MainReadBuffer;
@@ -125,7 +125,7 @@ namespace Aid.UsbSerial
 
             UsbManager = manager;
             UsbDevice = device;
-            mPortNumber = portNumber;
+            CurrentPortNumber = portNumber;
 
             InternalReadBuffer = new byte[DEFAULT_INTERNAL_READ_BUFFER_SIZE];
             TempReadBuffer = new byte[DEFAULT_TEMP_READ_BUFFER_SIZE];
@@ -141,7 +141,7 @@ namespace Aid.UsbSerial
 
         public override string ToString()
         {
-            return string.Format("<{0} device_name={1} device_id={2} port_number={3}>", this.GetType().Name, UsbDevice.DeviceName, UsbDevice.DeviceId, mPortNumber);
+            return string.Format("<{0} device_name={1} device_id={2} port_number={3}>", this.GetType().Name, UsbDevice.DeviceName, UsbDevice.DeviceId, CurrentPortNumber);
         }
 
         public UsbManager UsbManager
@@ -171,7 +171,7 @@ namespace Aid.UsbSerial
             {
                 return;
             }
-            lock (mInternalReadBufferLock)
+            lock (InternalReadBufferLock)
             {
                 InternalReadBuffer = new byte[bufferSize];
             }
@@ -199,7 +199,7 @@ namespace Aid.UsbSerial
 
         public int PortNumber
         {
-            get { return mPortNumber; }
+            get { return CurrentPortNumber; }
         }
 
         /**
@@ -221,7 +221,7 @@ namespace Aid.UsbSerial
         {
             if (UsbManager != null && UsbDevice != null)
             {
-                lock (mReadBufferLock)
+                lock (ReadBufferLock)
                 {
                     lock (WriteBufferLock)
                     {
@@ -236,7 +236,7 @@ namespace Aid.UsbSerial
         {
             if (Connection != null)
             {
-                lock (mReadBufferLock)
+                lock (ReadBufferLock)
                 {
                     lock (WriteBufferLock)
                     {
@@ -297,7 +297,7 @@ namespace Aid.UsbSerial
 //                    Log.Info(TAG, "Read Data Length : " + doTaskRxLen.ToString());
                     if (doTaskRxLen > 0)
                     {
-                        lock (mReadBufferLock)
+                        lock (ReadBufferLock)
                         {
                             readRemainBufferSize = DEFAULT_READ_BUFFER_SIZE - MainReadBufferWriteCursor;
 
@@ -344,7 +344,7 @@ namespace Aid.UsbSerial
         {
             readValidDataLength = MainReadBufferWriteCursor - MainReadBufferReadCursor;
             // MainReadBuffer[] にアクセスするので、ここにロックは必要
-            lock (mReadBufferLock)
+            lock (ReadBufferLock)
             {
                 /*
                  * 以下は高速化のために意図的に関数分割していない
@@ -400,7 +400,7 @@ namespace Aid.UsbSerial
 
         public void ResetReadBuffer()
         {
-            lock(mReadBufferLock)
+            lock(ReadBufferLock)
             {
                 MainReadBufferReadCursor = 0;
                 MainReadBufferWriteCursor = 0;
