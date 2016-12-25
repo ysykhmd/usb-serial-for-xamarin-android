@@ -81,14 +81,14 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f070011
 			public const int good_count = 2131165201;
 			
-			// aapt resource value: 0x7f07002b
-			public const int menu_test_mode = 2131165227;
-			
 			// aapt resource value: 0x7f07001c
-			public const int menu_test_period = 2131165212;
+			public const int menu_test_mode = 2131165212;
 			
-			// aapt resource value: 0x7f070024
-			public const int menu_transfer_rate = 2131165220;
+			// aapt resource value: 0x7f070027
+			public const int menu_test_period = 2131165223;
+			
+			// aapt resource value: 0x7f070020
+			public const int menu_transfer_rate = 2131165216;
 			
 			// aapt resource value: 0x7f07001b
 			public const int modeChange = 2131165211;
@@ -132,35 +132,35 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f070006
 			public const int test_mode = 2131165190;
 			
-			// aapt resource value: 0x7f07002d
-			public const int test_mode_cyclic_0x00_to_0xff = 2131165229;
-			
-			// aapt resource value: 0x7f07002c
-			public const int test_mode_nmew_check_sum = 2131165228;
-			
-			// aapt resource value: 0x7f07002e
-			public const int test_mode_send_data = 2131165230;
-			
-			// aapt resource value: 0x7f070022
-			public const int test_period_10min = 2131165218;
+			// aapt resource value: 0x7f07001e
+			public const int test_mode_cyclic_0x00_to_0xff = 2131165214;
 			
 			// aapt resource value: 0x7f07001d
-			public const int test_period_10sec = 2131165213;
+			public const int test_mode_nmew_check_sum = 2131165213;
 			
 			// aapt resource value: 0x7f07001f
-			public const int test_period_1min = 2131165215;
+			public const int test_mode_send_data = 2131165215;
 			
-			// aapt resource value: 0x7f070023
-			public const int test_period_30min = 2131165219;
+			// aapt resource value: 0x7f07002d
+			public const int test_period_10min = 2131165229;
 			
-			// aapt resource value: 0x7f07001e
-			public const int test_period_30sec = 2131165214;
+			// aapt resource value: 0x7f070028
+			public const int test_period_10sec = 2131165224;
 			
-			// aapt resource value: 0x7f070020
-			public const int test_period_3min = 2131165216;
+			// aapt resource value: 0x7f07002a
+			public const int test_period_1min = 2131165226;
 			
-			// aapt resource value: 0x7f070021
-			public const int test_period_5min = 2131165217;
+			// aapt resource value: 0x7f07002e
+			public const int test_period_30min = 2131165230;
+			
+			// aapt resource value: 0x7f070029
+			public const int test_period_30sec = 2131165225;
+			
+			// aapt resource value: 0x7f07002b
+			public const int test_period_3min = 2131165227;
+			
+			// aapt resource value: 0x7f07002c
+			public const int test_period_5min = 2131165228;
 			
 			// aapt resource value: 0x7f07000d
 			public const int test_time = 2131165197;
@@ -183,23 +183,23 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f07000a
 			public const int transfar_rate_value = 2131165194;
 			
-			// aapt resource value: 0x7f07002a
-			public const int transfer_rate_115200 = 2131165226;
+			// aapt resource value: 0x7f070026
+			public const int transfer_rate_115200 = 2131165222;
 			
-			// aapt resource value: 0x7f070027
-			public const int transfer_rate_19200 = 2131165223;
+			// aapt resource value: 0x7f070023
+			public const int transfer_rate_19200 = 2131165219;
 			
-			// aapt resource value: 0x7f070028
-			public const int transfer_rate_38400 = 2131165224;
+			// aapt resource value: 0x7f070024
+			public const int transfer_rate_38400 = 2131165220;
+			
+			// aapt resource value: 0x7f070021
+			public const int transfer_rate_4800 = 2131165217;
 			
 			// aapt resource value: 0x7f070025
-			public const int transfer_rate_4800 = 2131165221;
+			public const int transfer_rate_57600 = 2131165221;
 			
-			// aapt resource value: 0x7f070029
-			public const int transfer_rate_57600 = 2131165225;
-			
-			// aapt resource value: 0x7f070026
-			public const int transfer_rate_9600 = 2131165222;
+			// aapt resource value: 0x7f070022
+			public const int transfer_rate_9600 = 2131165218;
 			
 			static Id()
 			{

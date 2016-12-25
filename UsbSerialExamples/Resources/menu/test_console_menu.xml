@@ -1,40 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
   <item
-       android:id="@+id/menu_test_period"
-       android:showAsAction="never"
-       android:title="@string/test_period_title">
+     android:id="@+id/menu_test_mode"
+     android:showAsAction="never"
+     android:title="@string/test_mode_menu_title">
     <menu>
       <item
-        android:id="@+id/test_period_10sec"
+        android:id="@+id/test_mode_nmew_check_sum"
         android:showAsAction="never"
-        android:title="@string/test_period_10sec" />
+        android:title="@string/test_mode_nmew_check_sum"/>
       <item
-        android:id="@+id/test_period_30sec"
+        android:id="@+id/test_mode_cyclic_0x00_to_0xff"
         android:showAsAction="never"
-        android:title="@string/test_period_30sec" />
+        android:title="@string/test_mode_cyclic_0x00_to_0xff"/>
       <item
-        android:id="@+id/test_period_1min"
+        android:id="@+id/test_mode_send_data"
         android:showAsAction="never"
-        android:title="@string/test_period_1min" />
-      <item
-        android:id="@+id/test_period_3min"
-        android:showAsAction="never"
-        android:title="@string/test_period_3min" />
-      <item
-        android:id="@+id/test_period_5min"
-        android:showAsAction="never"
-        android:title="@string/test_period_5min" />
-      <item
-        android:id="@+id/test_period_10min"
-        android:showAsAction="never"
-        android:title="@string/test_period_10min" />
-      <item
-        android:id="@+id/test_period_30min"
-        android:showAsAction="never"
-        android:title="@string/test_period_30min" />
+        android:title="@string/test_mode_send_data"/>
     </menu>
-  
   </item>
   <item
        android:id="@+id/menu_transfer_rate"
@@ -68,22 +51,38 @@
     </menu>
   </item>
   <item
-       android:id="@+id/menu_test_mode"
+       android:id="@+id/menu_test_period"
        android:showAsAction="never"
-       android:title="@string/test_mode_menu_title">
+       android:title="@string/test_period_title">
     <menu>
       <item
-        android:id="@+id/test_mode_nmew_check_sum"
+        android:id="@+id/test_period_10sec"
         android:showAsAction="never"
-        android:title="@string/test_mode_nmew_check_sum"/>
+        android:title="@string/test_period_10sec" />
       <item
-        android:id="@+id/test_mode_cyclic_0x00_to_0xff"
+        android:id="@+id/test_period_30sec"
         android:showAsAction="never"
-        android:title="@string/test_mode_cyclic_0x00_to_0xff"/>
+        android:title="@string/test_period_30sec" />
       <item
-        android:id="@+id/test_mode_send_data"
+        android:id="@+id/test_period_1min"
         android:showAsAction="never"
-        android:title="@string/test_mode_send_data"/>
+        android:title="@string/test_period_1min" />
+      <item
+        android:id="@+id/test_period_3min"
+        android:showAsAction="never"
+        android:title="@string/test_period_3min" />
+      <item
+        android:id="@+id/test_period_5min"
+        android:showAsAction="never"
+        android:title="@string/test_period_5min" />
+      <item
+        android:id="@+id/test_period_10min"
+        android:showAsAction="never"
+        android:title="@string/test_period_10min" />
+      <item
+        android:id="@+id/test_period_30min"
+        android:showAsAction="never"
+        android:title="@string/test_period_30min" />
     </menu>
   </item>
 </menu>
