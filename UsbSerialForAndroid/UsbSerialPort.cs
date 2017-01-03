@@ -276,6 +276,7 @@ namespace Aid.UsbSerial
         int doTaskRxLen;
         int readRemainBufferSize;
         int XreadValidDataLength;
+        int next = 0;
 #if UseSmartThreadPool
         private object DoTasks()
 #else
@@ -286,15 +287,32 @@ namespace Aid.UsbSerial
 #endif
         {
             _ContinueUpdating = true;
-            while (_ContinueUpdating)
+            try
             {
-                try
+                while (_ContinueUpdating)
                 {
                     // FTDI:timeout は
                     //   500 だと nexus5/0x00-0xff/ 57600, 115200bps を受信できない
                     //   0 だと nexus5/0x00-0xff/57600bps/innerBuffer 16384byte でデータ受信のイベント発生の間隔が３秒近く、115200 bps だと 1.5秒程度開くことがある
                     doTaskRxLen = ReadInternal();
-//                    Log.Info(TAG, "Read Data Length : " + doTaskRxLen.ToString());
+                    if (doTaskRxLen >= 256 || next > 0)
+                    {
+                        string msg = "";
+                        for (int i = 0; i < doTaskRxLen; i++)
+                        {
+                            msg += TempReadBuffer[i].ToString("x2") + " ";
+                        }
+                        Log.Info(TAG, "Read Data Length : " + doTaskRxLen.ToString() + "\n" + msg);
+                        if (0 == next)
+                        {
+                            next = 20;
+                        }
+                        else
+                        {
+                            next -= 1;
+                        }
+                    }
+
                     if (doTaskRxLen > 0)
                     {
                         lock (ReadBufferLock)
@@ -322,71 +340,74 @@ namespace Aid.UsbSerial
                             }
                         }
                     }
+//                    Thread.Sleep(1);
                 }
-                catch (SystemException e)
-                {
-                    Log.Error(TAG, "Data read faild: " + e.Message, e);
-                    _ContinueUpdating = false;
-                    Close();
-                }
-
-                Thread.Sleep(1);
+            }
+            catch (SystemException e)
+            {
+                Log.Error(TAG, "Data read faild: " + e.Message, e);
+                _ContinueUpdating = false;
+                Close();
+                throw new System.IO.IOException("XXXX");
             }
             return null;
         }
 
         /*
-         * ガベージを増やさないために関数内の自動変数は、すべて関数外で static 宣言する
+         * ガベージを増やさないために関数内の自動変数は、すべて関数外で宣言する
          */
-        static int readFirstLength;
-        static int readValidDataLength;
+        int readFirstLength;
+        int readValidDataLength;
         public int Read(byte[] dest, int startIndex)
         {
-            readValidDataLength = MainReadBufferWriteCursor - MainReadBufferReadCursor;
             // MainReadBuffer[] にアクセスするので、ここにロックは必要
             lock (ReadBufferLock)
             {
-                /*
-                 * 以下は高速化のために意図的に関数分割していない
-                 */
-                if (MainReadBufferWriteCursor < MainReadBufferReadCursor)
+                readValidDataLength = MainReadBufferWriteCursor - MainReadBufferReadCursor;
+                if (readValidDataLength != 0)
                 {
-                    readValidDataLength += DEFAULT_READ_BUFFER_SIZE;
-                    if (readValidDataLength > dest.Length)
+                    /*
+                     * 以下は高速化のために意図的に関数分割していない
+                     */
+                    if (MainReadBufferWriteCursor < MainReadBufferReadCursor)
                     {
-                        readValidDataLength = dest.Length;
-                    }
+                        readValidDataLength += DEFAULT_READ_BUFFER_SIZE;
+                        if (readValidDataLength > dest.Length)
+                        {
+                            readValidDataLength = dest.Length;
+                        }
 
-                    if (readValidDataLength + MainReadBufferReadCursor > DEFAULT_READ_BUFFER_SIZE)
-                    {
-                        readFirstLength = DEFAULT_READ_BUFFER_SIZE - MainReadBufferReadCursor;
+                        if (readValidDataLength + MainReadBufferReadCursor > DEFAULT_READ_BUFFER_SIZE)
+                        {
+                            readFirstLength = DEFAULT_READ_BUFFER_SIZE - MainReadBufferReadCursor;
 
-                        Array.Copy(MainReadBuffer, MainReadBufferReadCursor, dest, startIndex, readFirstLength);
-                        Array.Copy(MainReadBuffer, 0, dest, startIndex + readFirstLength, MainReadBufferWriteCursor);
-                        MainReadBufferReadCursor = MainReadBufferWriteCursor;
+                            Array.Copy(MainReadBuffer, MainReadBufferReadCursor, dest, startIndex, readFirstLength);
+                            MainReadBufferReadCursor = readValidDataLength - readFirstLength;
+                            Array.Copy(MainReadBuffer, 0, dest, startIndex + readFirstLength, MainReadBufferReadCursor);
+                        }
+                        else
+                        {
+                            Array.Copy(MainReadBuffer, MainReadBufferReadCursor, dest, startIndex, readValidDataLength);
+                            MainReadBufferReadCursor += readValidDataLength;
+                            if (DEFAULT_READ_BUFFER_SIZE == MainReadBufferReadCursor)
+                            {
+                                MainReadBufferReadCursor = 0;
+                            }
+                        }
                     }
                     else
                     {
+                        if (readValidDataLength > dest.Length)
+                        {
+                            readValidDataLength = dest.Length;
+                        }
+
                         Array.Copy(MainReadBuffer, MainReadBufferReadCursor, dest, startIndex, readValidDataLength);
                         MainReadBufferReadCursor += readValidDataLength;
                         if (DEFAULT_READ_BUFFER_SIZE == MainReadBufferReadCursor)
                         {
                             MainReadBufferReadCursor = 0;
                         }
-                    }
-                }
-                else
-                {
-                    if (readValidDataLength > dest.Length)
-                    {
-                        readValidDataLength = dest.Length;
-                    }
-
-                    Array.Copy(MainReadBuffer, MainReadBufferReadCursor, dest, startIndex, readValidDataLength);
-                    MainReadBufferReadCursor += readValidDataLength;
-                    if (DEFAULT_READ_BUFFER_SIZE == MainReadBufferReadCursor)
-                    {
-                        MainReadBufferReadCursor = 0;
                     }
                 }
             }

@@ -30,6 +30,8 @@
   <string name="test_period_30min">30min</string>
 
   <string name="transfer_rate_menu_title">"Transfer rate"</string>
+  <string name="transfer_rate_1200">1200bps</string>
+  <string name="transfer_rate_2400">2400bps</string>
   <string name="transfer_rate_4800">4800bps</string>
   <string name="transfer_rate_9600">9600bps</string>
   <string name="transfer_rate_19200">19200bps</string>
@@ -40,5 +42,6 @@
   <string name="test_mode_menu_title">Test mode</string>
   <string name="test_mode_nmew_check_sum">NMEA Check Sum</string>
   <string name="test_mode_cyclic_0x00_to_0xff">Cyclic 0x00 to 0xFF</string>
+  <string name="test_mode_cyclic_0x41_to_0x5A">Cyclic 0x41 to 0x5A</string>
   <string name="test_mode_send_data">Send Data</string>
 </resources>

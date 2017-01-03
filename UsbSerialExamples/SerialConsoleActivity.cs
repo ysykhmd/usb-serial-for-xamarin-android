@@ -57,6 +57,7 @@ namespace UsbSerialExamples
         CheckData CheckInstance;
         CheckData CheckNmeaCheckSumInstance;
         CheckData CheckCyclic00ToFFInstance;
+        CheckData CheckCyclic41To5AInstance;
         CheckData CheckSendDataInstance;
 
 
@@ -158,6 +159,7 @@ namespace UsbSerialExamples
 
             CheckNmeaCheckSumInstance = new CheckNmeaCheckSum(this);
             CheckCyclic00ToFFInstance = new CheckCyclic00ToFF(this);
+            CheckCyclic41To5AInstance = new CheckCyclic41To5A(this);
             CheckSendDataInstance = new CheckSendData(this);
 
             CheckInstance = CheckCyclic00ToFFInstance;
@@ -240,6 +242,12 @@ namespace UsbSerialExamples
         {
             switch (item.ItemId)
             {
+                case Resource.Id.transfer_rate_1200:
+                    TransfarRate = 1200;
+                    break;
+                case Resource.Id.transfer_rate_2400:
+                    TransfarRate = 2400;
+                    break;
                 case Resource.Id.transfer_rate_4800:
                     TransfarRate = 4800;
                     break;
@@ -290,6 +298,15 @@ namespace UsbSerialExamples
                     ErrorCountTextView.Visibility = ViewStates.Visible;
                     TitleTotalTextView.SetText(Resource.String.title_total_receive);
                     CheckInstance = CheckCyclic00ToFFInstance;
+                    break;
+                case Resource.Id.test_mode_cyclic_0x41_to_0x5A:
+                    TestModeResourceId = Resource.Id.test_mode_cyclic_0x41_to_0x5A;
+                    TitleGoodTextView.Visibility = ViewStates.Visible;
+                    GoodCountTextView.Visibility = ViewStates.Visible;
+                    TitleErrorTextView.Visibility = ViewStates.Visible;
+                    ErrorCountTextView.Visibility = ViewStates.Visible;
+                    TitleTotalTextView.SetText(Resource.String.title_total_receive);
+                    CheckInstance = CheckCyclic41To5AInstance;
                     break;
                 case Resource.Id.test_mode_send_data:
                     TestModeResourceId = Resource.Id.test_mode_send_data;
@@ -497,36 +514,24 @@ namespace UsbSerialExamples
 
         /*
          * このイベントハンドラはかなり頻繁に呼び出されるため、
-         * ガベージを無暗に増やさないように、関数内の自動変数は、すべて関数外で static 宣言する
+         * ガベージを無暗に増やさないように、関数内の自動変数は、すべて関数外で宣言する
          */
-        static int DataReceivedHandlerLoopCounter;
-        static Object dataReceivedHandlerLockObject = new Object();
+        int DataReceivedHandlerLoopCounter;
+        Object dataReceivedHandlerLockObject = new Object();
+        int DataRecivedHandlerLength;
         private void DataReceivedHandler(object sender, DataReceivedEventArgs e)
         {
             lock (dataReceivedHandlerLockObject)
             {
-                int length = e.Port.Read(readDataBuffer, 0);
-//              if (length > 300)
-                {
-//                    Log.Debug(TAG, "ReadDataLength " + length);
-                }
-//              RunOnUiThread(() => { UpdateReceivedData(data, length); });
+                DataRecivedHandlerLength = e.Port.Read(readDataBuffer, 0);
                 if (ActivityStatus == TEST_STATUS.TESTING)
                 {
-                    for (DataReceivedHandlerLoopCounter = 0; DataReceivedHandlerLoopCounter < length; DataReceivedHandlerLoopCounter++)
+                     for (DataReceivedHandlerLoopCounter = 0; DataReceivedHandlerLoopCounter < DataRecivedHandlerLength; DataReceivedHandlerLoopCounter++)
                     {
                         CheckInstance.ProcData(readDataBuffer[DataReceivedHandlerLoopCounter]);
                     }
                 }
             }
-        }
-
-        public void UpdateReceivedData(byte[] data, int length)
-        {
-//            string message = "Read " + length + " bytes: \n" + HexDump.DumpHexString(data, 0, length) + "\n\n";
-//			DumpTextView.Append(message);
-//			DumpTextView.Append(System.Text.Encoding.Default.GetString(data, 0, length));
-//            ScrollView.SmoothScrollTo(0, DumpTextView.Bottom);
         }
 
         public void UpdateTestInfo(String msg)
@@ -556,6 +561,7 @@ namespace UsbSerialExamples
      */
     abstract class CheckData
     {
+        protected string MessageBuffer;
         abstract public string TestMode { get; }
         abstract public string GoodCountString { get; }
         abstract public string ErrorCountString { get; }
@@ -725,9 +731,14 @@ namespace UsbSerialExamples
                         {
                             errorCount += 1;
                             totalCount += 1;
+                            MessageBuffer = "Error B: " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            parentActivity.RunOnUiThread(() =>
+                                {
+                                    parentActivity.UpdateTestInfo(MessageBuffer);
+                                }
+                            );
                             LastData = data;
                         }
-
                     }
                     else
                     {
@@ -740,9 +751,10 @@ namespace UsbSerialExamples
                             errorCount += 1;
                             totalCount += 1;
                             state = STATE.IDLE;
+                            MessageBuffer = "Error A: " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                                 {
-                                    parentActivity.UpdateTestInfo("Error : " + DateTime.Now.ToString("HH:mm:ss.fff") + "\n");
+                                    parentActivity.UpdateTestInfo(MessageBuffer);
                                 }
                             );
                         }
@@ -809,5 +821,101 @@ namespace UsbSerialExamples
             threadContinueFlag = false;
         }
     }
+
+    /*
+ * データ受信のテスト
+* 　・設定された速度・時間データを受信し、0x41-0x5A(A-Z) の循環データか否かをチェックする
+*/
+    class CheckCyclic41To5A : CheckData
+    {
+        enum STATE : byte { IDLE, DATA };
+
+        public override string TestMode { get { return "Cyclic 0x41 to 0x5A"; } }
+        public override string GoodCountString { get { return goodCount.ToString(); } }
+        public override string ErrorCountString { get { return errorCount.ToString(); } }
+        public override string TotalCountString { get { return totalCount.ToString(); } }
+        STATE state = STATE.IDLE;
+        Int64 goodCount = 0;
+        Int64 errorCount = 0;
+        Int64 totalCount = 0;
+        Object thisLock = new Object();
+
+        byte LastData;
+        SerialConsoleActivity parentActivity;
+
+        public CheckCyclic41To5A(SerialConsoleActivity activity)
+        {
+            parentActivity = activity;
+        }
+
+        public override void ResetProc()
+        {
+            goodCount = 0;
+            errorCount = 0;
+            totalCount = 0;
+        }
+
+        public override void StartProc()
+        {
+            state = STATE.IDLE;
+        }
+
+        public override void ProcData(byte data)
+        {
+            switch (state)
+            {
+                case STATE.IDLE:
+                    if (0x41 == data)
+                    {
+                        state = STATE.DATA;
+                        LastData = data;
+                    }
+                    break;
+                case STATE.DATA:
+                    if (0x41 == data)
+                    {
+                        if (0x5A == LastData)
+                        {
+                            goodCount += 1;
+                            totalCount += 1;
+                            LastData = data;
+                        }
+                        else
+                        {
+                            errorCount += 1;
+                            totalCount += 1;
+                            LastData = data;
+                            MessageBuffer = "Error B: " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            parentActivity.RunOnUiThread(() =>
+                            {
+                                parentActivity.UpdateTestInfo(MessageBuffer);
+                            }
+                            );
+                        }
+
+                    }
+                    else
+                    {
+                        if (data - 1 == LastData)
+                        {
+                            LastData = data;
+                        }
+                        else
+                        {
+                            errorCount += 1;
+                            totalCount += 1;
+                            state = STATE.IDLE;
+                            MessageBuffer = "Error A: " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            parentActivity.RunOnUiThread(() =>
+                            {
+                                parentActivity.UpdateTestInfo(MessageBuffer);
+                            }
+                            );
+                        }
+                    }
+                    break;
+            }
+        }
+    }
 }
- 
+

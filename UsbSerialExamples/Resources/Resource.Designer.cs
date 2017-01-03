@@ -84,11 +84,11 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f07001c
 			public const int menu_test_mode = 2131165212;
 			
-			// aapt resource value: 0x7f070027
-			public const int menu_test_period = 2131165223;
+			// aapt resource value: 0x7f07002a
+			public const int menu_test_period = 2131165226;
 			
-			// aapt resource value: 0x7f070020
-			public const int menu_transfer_rate = 2131165216;
+			// aapt resource value: 0x7f070021
+			public const int menu_transfer_rate = 2131165217;
 			
 			// aapt resource value: 0x7f07001b
 			public const int modeChange = 2131165211;
@@ -135,32 +135,35 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f07001e
 			public const int test_mode_cyclic_0x00_to_0xff = 2131165214;
 			
+			// aapt resource value: 0x7f07001f
+			public const int test_mode_cyclic_0x41_to_0x5A = 2131165215;
+			
 			// aapt resource value: 0x7f07001d
 			public const int test_mode_nmew_check_sum = 2131165213;
 			
-			// aapt resource value: 0x7f07001f
-			public const int test_mode_send_data = 2131165215;
+			// aapt resource value: 0x7f070020
+			public const int test_mode_send_data = 2131165216;
 			
-			// aapt resource value: 0x7f07002d
-			public const int test_period_10min = 2131165229;
-			
-			// aapt resource value: 0x7f070028
-			public const int test_period_10sec = 2131165224;
-			
-			// aapt resource value: 0x7f07002a
-			public const int test_period_1min = 2131165226;
-			
-			// aapt resource value: 0x7f07002e
-			public const int test_period_30min = 2131165230;
-			
-			// aapt resource value: 0x7f070029
-			public const int test_period_30sec = 2131165225;
+			// aapt resource value: 0x7f070030
+			public const int test_period_10min = 2131165232;
 			
 			// aapt resource value: 0x7f07002b
-			public const int test_period_3min = 2131165227;
+			public const int test_period_10sec = 2131165227;
+			
+			// aapt resource value: 0x7f07002d
+			public const int test_period_1min = 2131165229;
+			
+			// aapt resource value: 0x7f070031
+			public const int test_period_30min = 2131165233;
 			
 			// aapt resource value: 0x7f07002c
-			public const int test_period_5min = 2131165228;
+			public const int test_period_30sec = 2131165228;
+			
+			// aapt resource value: 0x7f07002e
+			public const int test_period_3min = 2131165230;
+			
+			// aapt resource value: 0x7f07002f
+			public const int test_period_5min = 2131165231;
 			
 			// aapt resource value: 0x7f07000d
 			public const int test_time = 2131165197;
@@ -183,23 +186,29 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f07000a
 			public const int transfar_rate_value = 2131165194;
 			
-			// aapt resource value: 0x7f070026
-			public const int transfer_rate_115200 = 2131165222;
-			
-			// aapt resource value: 0x7f070023
-			public const int transfer_rate_19200 = 2131165219;
-			
-			// aapt resource value: 0x7f070024
-			public const int transfer_rate_38400 = 2131165220;
-			
-			// aapt resource value: 0x7f070021
-			public const int transfer_rate_4800 = 2131165217;
-			
-			// aapt resource value: 0x7f070025
-			public const int transfer_rate_57600 = 2131165221;
+			// aapt resource value: 0x7f070029
+			public const int transfer_rate_115200 = 2131165225;
 			
 			// aapt resource value: 0x7f070022
-			public const int transfer_rate_9600 = 2131165218;
+			public const int transfer_rate_1200 = 2131165218;
+			
+			// aapt resource value: 0x7f070026
+			public const int transfer_rate_19200 = 2131165222;
+			
+			// aapt resource value: 0x7f070023
+			public const int transfer_rate_2400 = 2131165219;
+			
+			// aapt resource value: 0x7f070027
+			public const int transfer_rate_38400 = 2131165223;
+			
+			// aapt resource value: 0x7f070024
+			public const int transfer_rate_4800 = 2131165220;
+			
+			// aapt resource value: 0x7f070028
+			public const int transfer_rate_57600 = 2131165224;
+			
+			// aapt resource value: 0x7f070025
+			public const int transfer_rate_9600 = 2131165221;
 			
 			static Id()
 			{
@@ -279,17 +288,20 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f050002
 			public const int test_console_title = 2131034114;
 			
+			// aapt resource value: 0x7f050026
+			public const int test_mode_cyclic_0x00_to_0xff = 2131034150;
+			
+			// aapt resource value: 0x7f050027
+			public const int test_mode_cyclic_0x41_to_0x5A = 2131034151;
+			
 			// aapt resource value: 0x7f050024
-			public const int test_mode_cyclic_0x00_to_0xff = 2131034148;
-			
-			// aapt resource value: 0x7f050022
-			public const int test_mode_menu_title = 2131034146;
-			
-			// aapt resource value: 0x7f050023
-			public const int test_mode_nmew_check_sum = 2131034147;
+			public const int test_mode_menu_title = 2131034148;
 			
 			// aapt resource value: 0x7f050025
-			public const int test_mode_send_data = 2131034149;
+			public const int test_mode_nmew_check_sum = 2131034149;
+			
+			// aapt resource value: 0x7f050028
+			public const int test_mode_send_data = 2131034152;
 			
 			// aapt resource value: 0x7f050019
 			public const int test_period_10min = 2131034137;
@@ -345,23 +357,29 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f050005
 			public const int title_transfar_rate = 2131034117;
 			
-			// aapt resource value: 0x7f050021
-			public const int transfer_rate_115200 = 2131034145;
-			
-			// aapt resource value: 0x7f05001e
-			public const int transfer_rate_19200 = 2131034142;
-			
-			// aapt resource value: 0x7f05001f
-			public const int transfer_rate_38400 = 2131034143;
+			// aapt resource value: 0x7f050023
+			public const int transfer_rate_115200 = 2131034147;
 			
 			// aapt resource value: 0x7f05001c
-			public const int transfer_rate_4800 = 2131034140;
+			public const int transfer_rate_1200 = 2131034140;
 			
 			// aapt resource value: 0x7f050020
-			public const int transfer_rate_57600 = 2131034144;
+			public const int transfer_rate_19200 = 2131034144;
 			
 			// aapt resource value: 0x7f05001d
-			public const int transfer_rate_9600 = 2131034141;
+			public const int transfer_rate_2400 = 2131034141;
+			
+			// aapt resource value: 0x7f050021
+			public const int transfer_rate_38400 = 2131034145;
+			
+			// aapt resource value: 0x7f05001e
+			public const int transfer_rate_4800 = 2131034142;
+			
+			// aapt resource value: 0x7f050022
+			public const int transfer_rate_57600 = 2131034146;
+			
+			// aapt resource value: 0x7f05001f
+			public const int transfer_rate_9600 = 2131034143;
 			
 			// aapt resource value: 0x7f05001b
 			public const int transfer_rate_menu_title = 2131034139;
