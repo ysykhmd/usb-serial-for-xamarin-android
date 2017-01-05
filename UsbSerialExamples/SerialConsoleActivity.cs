@@ -688,6 +688,7 @@ namespace UsbSerialExamples
         Object thisLock = new Object();
 
         byte LastData;
+        int dataCount;
         SerialConsoleActivity parentActivity;
 
         public CheckCyclic00ToFF(SerialConsoleActivity activity)
@@ -700,6 +701,7 @@ namespace UsbSerialExamples
             goodCount = 0;
             errorCount = 0;
             totalCount = 0;
+            dataCount = 0;
         }
 
         public override void StartProc()
@@ -709,6 +711,7 @@ namespace UsbSerialExamples
 
         public override void ProcData(byte data)
         {
+            dataCount += 1;
             switch (state)
             {
                 case STATE.IDLE:
@@ -731,7 +734,7 @@ namespace UsbSerialExamples
                         {
                             errorCount += 1;
                             totalCount += 1;
-                            MessageBuffer = "Error B: " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            MessageBuffer = "Error B: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                                 {
                                     parentActivity.UpdateTestInfo(MessageBuffer);
@@ -751,7 +754,7 @@ namespace UsbSerialExamples
                             errorCount += 1;
                             totalCount += 1;
                             state = STATE.IDLE;
-                            MessageBuffer = "Error A: " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            MessageBuffer = "Error A: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                                 {
                                     parentActivity.UpdateTestInfo(MessageBuffer);
@@ -839,6 +842,7 @@ namespace UsbSerialExamples
         Int64 errorCount = 0;
         Int64 totalCount = 0;
         Object thisLock = new Object();
+        int dataCount;
 
         byte LastData;
         SerialConsoleActivity parentActivity;
@@ -853,6 +857,7 @@ namespace UsbSerialExamples
             goodCount = 0;
             errorCount = 0;
             totalCount = 0;
+            dataCount = 0;
         }
 
         public override void StartProc()
@@ -862,6 +867,7 @@ namespace UsbSerialExamples
 
         public override void ProcData(byte data)
         {
+            dataCount += 1;
             switch (state)
             {
                 case STATE.IDLE:
@@ -885,7 +891,7 @@ namespace UsbSerialExamples
                             errorCount += 1;
                             totalCount += 1;
                             LastData = data;
-                            MessageBuffer = "Error B: " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            MessageBuffer = "Error B: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                             {
                                 parentActivity.UpdateTestInfo(MessageBuffer);
@@ -905,7 +911,7 @@ namespace UsbSerialExamples
                             errorCount += 1;
                             totalCount += 1;
                             state = STATE.IDLE;
-                            MessageBuffer = "Error A: " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            MessageBuffer = "Error A: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                             {
                                 parentActivity.UpdateTestInfo(MessageBuffer);
