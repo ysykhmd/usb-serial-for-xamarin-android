@@ -384,7 +384,7 @@ namespace Aid.UsbSerial
                 int writeLength;
                 int amtWritten;
 
-                lock (WriteBufferLock)
+                lock (MainWriteBufferLock)
                 {
                     byte[] writeBuffer;
 

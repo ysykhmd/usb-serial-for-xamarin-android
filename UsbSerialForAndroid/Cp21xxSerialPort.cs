@@ -186,7 +186,7 @@ namespace Aid.UsbSerial
         {
             mainWriteBufferOffsetPointer = 0;
 
-            lock (WriteBufferLock)
+            lock (MainWriteBufferLock)
             {
                 while (mainWriteBufferOffsetPointer < src.Length)
                 {

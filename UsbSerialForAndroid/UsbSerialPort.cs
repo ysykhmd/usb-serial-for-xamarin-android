@@ -81,17 +81,17 @@ namespace Aid.UsbSerial
         protected UsbDeviceConnection Connection { get; set; }
 
         protected Object InternalReadBufferLock = new Object();
-        protected Object ReadBufferLock = new Object();
-        protected Object WriteBufferLock = new Object();
+        protected Object MainReadBufferLock = new Object();
+        protected Object MainWriteBufferLock = new Object();
 
-        /** Internal read buffer.  Guarded by {@link #ReadBufferLock}. */
         protected byte[] InternalReadBuffer;
         protected byte[] TempReadBuffer;
+        /** Main read buffer.  Guarded by {@link #MainReadBufferLock}. */
         protected byte[] MainReadBuffer;
         protected int MainReadBufferWriteCursor;
         protected int MainReadBufferReadCursor;
 
-        /** Internal write buffer.  Guarded by {@link #WriteBufferLock}. */
+        /** Internal write buffer.  Guarded by {@link #MainWriteBufferLock}. */
         protected byte[] MainWriteBuffer;
 
         private int dataBits;
@@ -188,7 +188,7 @@ namespace Aid.UsbSerial
          */
         public void SetWriteBufferSize(int bufferSize)
         {
-            lock (WriteBufferLock)
+            lock (MainWriteBufferLock)
             {
                 if (bufferSize == MainWriteBuffer.Length)
                 {
@@ -224,9 +224,9 @@ namespace Aid.UsbSerial
         {
             if (UsbManager != null && UsbDevice != null)
             {
-                lock (ReadBufferLock)
+                lock (MainReadBufferLock)
                 {
-                    lock (WriteBufferLock)
+                    lock (MainWriteBufferLock)
                     {
                         Connection = UsbManager.OpenDevice(UsbDevice);
                     }
@@ -239,9 +239,9 @@ namespace Aid.UsbSerial
         {
             if (Connection != null)
             {
-                lock (ReadBufferLock)
+                lock (MainReadBufferLock)
                 {
-                    lock (WriteBufferLock)
+                    lock (MainWriteBufferLock)
                     {
                         Connection.Close();
                         Connection = null;
@@ -319,7 +319,7 @@ namespace Aid.UsbSerial
 
                     if (doTaskRxLen > 0)
                     {
-                        lock (ReadBufferLock)
+                        lock (MainReadBufferLock)
                         {
                             readRemainBufferSize = DEFAULT_READ_BUFFER_SIZE - MainReadBufferWriteCursor;
 
@@ -364,7 +364,7 @@ namespace Aid.UsbSerial
         public int Read(byte[] dest, int startIndex)
         {
             // MainReadBuffer[] にアクセスするので、ここにロックは必要
-            lock (ReadBufferLock)
+            lock (MainReadBufferLock)
             {
                 readValidDataLength = MainReadBufferWriteCursor - MainReadBufferReadCursor;
                 if (readValidDataLength != 0)
@@ -424,7 +424,7 @@ namespace Aid.UsbSerial
 
         public void ResetReadBuffer()
         {
-            lock(ReadBufferLock)
+            lock(MainReadBufferLock)
             {
                 MainReadBufferReadCursor = 0;
                 MainReadBufferWriteCursor = 0;
