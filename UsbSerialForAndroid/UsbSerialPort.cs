@@ -91,7 +91,7 @@ namespace Aid.UsbSerial
         protected int MainReadBufferWriteCursor;
         protected int MainReadBufferReadCursor;
 
-        /** Internal write buffer.  Guarded by {@link #mWriteBufferLock}. */
+        /** Internal write buffer.  Guarded by {@link #WriteBufferLock}. */
         protected byte[] MainWriteBuffer;
 
         private int dataBits;
