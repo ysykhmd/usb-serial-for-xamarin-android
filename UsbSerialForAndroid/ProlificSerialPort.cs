@@ -83,16 +83,16 @@ namespace Aid.UsbSerial
         const int DEVICE_TYPE_0 = 1;
         const int DEVICE_TYPE_1 = 2;
 
-        int mDeviceType;
+        int DeviceType;
 
-        UsbEndpoint mReadEndpoint;
-        UsbEndpoint mWriteEndpoint;
-        UsbEndpoint mInterruptEndpoint;
+        UsbEndpoint ReadEndpoint;
+        UsbEndpoint WriteEndpoint;
+        UsbEndpoint InterruptEndpoint;
 
-        volatile int mControlLinesValue = 0;
-        volatile int mStatus = 0;
-        bool mStopReadStatusThread = false;
-        IOException mReadStatusException = null;
+        volatile int ControlLinesValue = 0;
+        volatile int StatusBuffer = 0;
+        bool StopReadStatusThread = false;
+        IOException ReadStatusException = null;
 
         public ProlificSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)
@@ -154,42 +154,41 @@ namespace Aid.UsbSerial
             VendorIn(0x8383, 0, 1);
             VendorOut(0, 1, null);
             VendorOut(1, 0, null);
-            VendorOut(2, (mDeviceType == DEVICE_TYPE_HX) ? 0x44 : 0x24, null);
+            VendorOut(2, (DeviceType == DEVICE_TYPE_HX) ? 0x44 : 0x24, null);
         }
 
         private void SetControlLines(int newControlLinesValue)
         {
             CtrlOut(SET_CONTROL_REQUEST, newControlLinesValue, 0, null);
-            mControlLinesValue = newControlLinesValue;
+            ControlLinesValue = newControlLinesValue;
         }
 
 
-        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
-        byte[] ReadStatusThreadBuffer = new byte[STATUS_BUFFER_SIZE];
-        int ReadStatusThreadReadBytesCount;
         private object ReadStatusThreadFunction()
         {
+            byte[] readStatusBuffer = new byte[STATUS_BUFFER_SIZE];
+            int ReadStatusBytesCount;
             try
             {
-                while (!mStopReadStatusThread)
+                while (!StopReadStatusThread)
                 {
-                    ReadStatusThreadReadBytesCount = Connection.BulkTransfer(mInterruptEndpoint,
-                            ReadStatusThreadBuffer,
+                    ReadStatusBytesCount = Connection.BulkTransfer(InterruptEndpoint,
+                            readStatusBuffer,
                             STATUS_BUFFER_SIZE,
                             500);
-                    if (ReadStatusThreadReadBytesCount == STATUS_BUFFER_SIZE)
+                    if (ReadStatusBytesCount == STATUS_BUFFER_SIZE)
                     {
-                        mStatus = ReadStatusThreadBuffer[STATUS_BYTE_IDX] & 0xff;
+                        StatusBuffer = readStatusBuffer[STATUS_BYTE_IDX] & 0xff;
                     }
-                    else if (ReadStatusThreadReadBytesCount > 0)
+                    else if (ReadStatusBytesCount > 0)
                     {
-                        throw new IOException(string.Format("Invalid CTS / DSR / CD / RI status buffer received, expected {0} bytes, but received {1} bytes.", STATUS_BUFFER_SIZE, ReadStatusThreadReadBytesCount));
+                        throw new IOException(string.Format("Invalid CTS / DSR / CD / RI status buffer received, expected {0} bytes, but received {1} bytes.", STATUS_BUFFER_SIZE, ReadStatusBytesCount));
                     }
                 }
             }
             catch (IOException e)
             {
-                mReadStatusException = e;
+                ReadStatusException = e;
             }
             return null;
         }
@@ -199,14 +198,14 @@ namespace Aid.UsbSerial
             get
             {
                 /* throw and clear an exception which occured in the status read thread */
-                if (mReadStatusException != null)
+                if (ReadStatusException != null)
                 {
-                    IOException readStatusException = mReadStatusException;
-                    mReadStatusException = null;
+                    IOException readStatusException = ReadStatusException;
+                    ReadStatusException = null;
                     throw readStatusException;
                 }
 
-                return mStatus;
+                return StatusBuffer;
             }
         }
 
@@ -235,22 +234,22 @@ namespace Aid.UsbSerial
                     switch ((int)currentEndpoint.Address)
                     {
                         case READ_ENDPOINT:
-                            mReadEndpoint = currentEndpoint;
+                            ReadEndpoint = currentEndpoint;
                             break;
 
                         case WRITE_ENDPOINT:
-                            mWriteEndpoint = currentEndpoint;
+                            WriteEndpoint = currentEndpoint;
                             break;
 
                         case INTERRUPT_ENDPOINT:
-                            mInterruptEndpoint = currentEndpoint;
+                            InterruptEndpoint = currentEndpoint;
                             break;
                     }
                 }
 
                 if (UsbDevice.DeviceClass == UsbClass.Comm)
                 {
-                    mDeviceType = DEVICE_TYPE_0;
+                    DeviceType = DEVICE_TYPE_0;
                 }
                 else
                 {
@@ -260,28 +259,28 @@ namespace Aid.UsbSerial
                         byte maxPacketSize0 = rawDescriptors[7];
                         if (maxPacketSize0 == 64)
                         {
-                            mDeviceType = DEVICE_TYPE_HX;
+                            DeviceType = DEVICE_TYPE_HX;
                         }
                         else if ((UsbDevice.DeviceClass == UsbClass.PerInterface) || (UsbDevice.DeviceClass == UsbClass.VendorSpec))
                         {
-                            mDeviceType = DEVICE_TYPE_1;
+                            DeviceType = DEVICE_TYPE_1;
                         }
                         else
                         {
                             Log.Warn(TAG, "Could not detect PL2303 subtype, "
                                 + "Assuming that it is a HX device");
-                            mDeviceType = DEVICE_TYPE_HX;
+                            DeviceType = DEVICE_TYPE_HX;
                         }
                     }
                     catch (Exception e)
                     {
-                        mDeviceType = DEVICE_TYPE_HX;
+                        DeviceType = DEVICE_TYPE_HX;
                         Log.Error(TAG, "An unexpected exception occured while trying "
                                 + "to detect PL2303 subtype", e);
                     }
                 }
 
-                SetControlLines(mControlLinesValue);
+                SetControlLines(ControlLinesValue);
                 ResetDevice();
                 DoBlackMagic();
                 ResetParameters();
@@ -289,14 +288,14 @@ namespace Aid.UsbSerial
                 //
 
                 byte[] buffer = new byte[STATUS_BUFFER_SIZE];
-                int readBytes = Connection.BulkTransfer(mInterruptEndpoint, buffer, STATUS_BUFFER_SIZE, 100);
+                int readBytes = Connection.BulkTransfer(InterruptEndpoint, buffer, STATUS_BUFFER_SIZE, 100);
                 if (readBytes != STATUS_BUFFER_SIZE)
                 {
                     Log.Warn(TAG, "Could not read initial CTS / DSR / CD / RI status");
                 }
                 else
                 {
-                    mStatus = buffer[STATUS_BYTE_IDX] & 0xff;
+                    StatusBuffer = buffer[STATUS_BYTE_IDX] & 0xff;
                 }
 
 #if UseSmartThreadPool
@@ -334,7 +333,7 @@ namespace Aid.UsbSerial
 
             try
             {
-                mStopReadStatusThread = true;
+                StopReadStatusThread = true;
                 if (Connection != null)
                 {
                     ResetDevice();
@@ -368,7 +367,7 @@ namespace Aid.UsbSerial
             {
                 return 0;
             }
-            ReadInternalNumBytesRead = Connection.BulkTransfer(mReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
+            ReadInternalNumBytesRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
             if (ReadInternalNumBytesRead < 0)
             {
                 return 0;
@@ -401,7 +400,7 @@ namespace Aid.UsbSerial
                         writeBuffer = MainWriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(mWriteEndpoint,
+                    amtWritten = Connection.BulkTransfer(WriteEndpoint,
                             writeBuffer, writeLength, timeoutMillis);
                 }
 
@@ -517,18 +516,18 @@ namespace Aid.UsbSerial
         {
             get
             {
-                return ((mControlLinesValue & CONTROL_DTR) == CONTROL_DTR);
+                return ((ControlLinesValue & CONTROL_DTR) == CONTROL_DTR);
             }
             set
             {
                 int newControlLinesValue;
                 if (value)
                 {
-                    newControlLinesValue = mControlLinesValue | CONTROL_DTR;
+                    newControlLinesValue = ControlLinesValue | CONTROL_DTR;
                 }
                 else
                 {
-                    newControlLinesValue = mControlLinesValue & ~CONTROL_DTR;
+                    newControlLinesValue = ControlLinesValue & ~CONTROL_DTR;
                 }
                 SetControlLines(newControlLinesValue);
             }
@@ -546,18 +545,18 @@ namespace Aid.UsbSerial
         {
             get
             {
-                return ((mControlLinesValue & CONTROL_RTS) == CONTROL_RTS);
+                return ((ControlLinesValue & CONTROL_RTS) == CONTROL_RTS);
             }
             set
             {
                 int newControlLinesValue;
                 if (value)
                 {
-                    newControlLinesValue = mControlLinesValue | CONTROL_RTS;
+                    newControlLinesValue = ControlLinesValue | CONTROL_RTS;
                 }
                 else
                 {
-                    newControlLinesValue = mControlLinesValue & ~CONTROL_RTS;
+                    newControlLinesValue = ControlLinesValue & ~CONTROL_RTS;
                 }
                 SetControlLines(newControlLinesValue);
             }
