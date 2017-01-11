@@ -66,6 +66,9 @@ namespace Aid.UsbSerial
         public const StopBits DefaultStopBits = StopBits.One;
 
         // データ受信タイムアウトの指定 (ms)
+        // Nexus5(Android 5.1.1/LMY48B)+FT232RL の組み合わせで
+        //   500 だと 0x00-0xff/ 57600, 115200bps を受信できない
+        //   0 だと 0x00-0xff/57600bps/innerBuffer 16384byte でデータ受信のイベント発生の間隔が３秒近く、115200 bps だと 1.5秒程度開くことがある
         // Nexus5(Android 5.1.1/LMY48B)+CP2102 の組み合わせで
         //   ・DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024 だと、19200bps では 300 を指定すると受信できない(9600bps では受信できた)
         public const int DEFAULT_READ_TIMEOUT_MILLISEC = 0;
@@ -270,13 +273,6 @@ namespace Aid.UsbSerial
             _ContinueUpdating = false;
         }
 
-        /*
-         * ガベージを増やさないために DoTasks 内の自動変数は、すべて関数外で static 宣言する
-         */
-        int doTaskRxLen;
-        int readRemainBufferSize;
-        int XreadValidDataLength;
-        int next = 0;
 #if UseSmartThreadPool
         private object DoTasks()
 #else
@@ -286,32 +282,40 @@ namespace Aid.UsbSerial
         private WaitCallback DoTasks()
 #endif
         {
+            int doTaskRxLen;
+            int readRemainBufferSize;
+
             _ContinueUpdating = true;
             try
             {
                 while (_ContinueUpdating)
                 {
-                    // FTDI:timeout は
-                    //   500 だと nexus5/0x00-0xff/ 57600, 115200bps を受信できない
-                    //   0 だと nexus5/0x00-0xff/57600bps/innerBuffer 16384byte でデータ受信のイベント発生の間隔が３秒近く、115200 bps だと 1.5秒程度開くことがある
                     doTaskRxLen = ReadInternal();
-                    if (doTaskRxLen >= 256 || next > 0)
-                    {
-                        string msg = "";
-                        for (int i = 0; i < doTaskRxLen; i++)
-                        {
-                            msg += TempReadBuffer[i].ToString("x2") + " ";
-                        }
-                        Log.Info(TAG, "Read Data Length : " + doTaskRxLen.ToString() + "\n" + msg);
-                        if (0 == next)
-                        {
-                            next = 20;
-                        }
-                        else
-                        {
-                            next -= 1;
-                        }
-                    }
+
+                    // デバッグ時のログ出力用コード:
+                    //  ReadInternal() の読出しバイト数が 256byte以上になった場合に、それ以降20回、ReadInternal() が読みだしたデータをダンプする
+                    //  while の外で next を宣言する必要がある
+                    //  ProlificSerialPort.cs の受信エラー調査に使用した
+                    //if (doTaskRxLen >= 256 || next > 0)
+                    //{
+                    //    string msg = "";
+                    //    for (int i = 0; i < doTaskRxLen; i++)
+                    //    {
+                    //        msg += TempReadBuffer[i].ToString("x2") + " ";
+                    //    }
+                    //    Log.Info(TAG, "Read Data Length : " + doTaskRxLen.ToString() + "\n" + msg);
+                    //    if (0 == next)
+                    //    {
+                    //        next = 20;
+                    //    }
+                    //    else
+                    //    {
+                    //        next -= 1;
+                    //    }
+                    //}
+
+                    // デバッグ時のログ出力用コード:ReadInternal() が一回に読み出す byte数をログに出力
+                    // Log.Info(TAG, "Read Data Length : " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + doTaskRxLen.ToString() + "\n");
 
                     if (doTaskRxLen > 0)
                     {
@@ -340,7 +344,6 @@ namespace Aid.UsbSerial
                             }
                         }
                     }
-//                    Thread.Sleep(1);
                 }
             }
             catch (SystemException e)
@@ -356,7 +359,7 @@ namespace Aid.UsbSerial
         /*
          * ガベージを増やさないために関数内の自動変数は、すべて関数外で宣言する
          */
-        int readFirstLength;
+                    int readFirstLength;
         int readValidDataLength;
         public int Read(byte[] dest, int startIndex)
         {
