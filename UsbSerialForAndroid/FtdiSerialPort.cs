@@ -372,7 +372,7 @@ namespace Aid.UsbSerial
                             + " bytes at offset " + writeSrcBufferOffset + " length=" + src.Length);
                 }
 
-                Log.Debug(TAG, "Wrote amtWritten=" + amtWritten + " attempted=" + writeLength);
+                // Log.Debug(TAG, "Wrote amtWritten=" + amtWritten + " attempted=" + writeLength);
                 writeSrcBufferOffset += amtWritten;
             }
             return writeSrcBufferOffset;
