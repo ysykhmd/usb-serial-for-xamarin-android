@@ -48,7 +48,7 @@ namespace UsbSerialExamples
         enum TEST_PERIOD : Int16{ SEC10 = 10, SEC30 = 30, MIN01 = 60, MIN03 = 180, MIN05 = 300, MIN10 = 600, MIN30 = 1800 }
 
         const int DEFAULT_TEST_PERIOD = (int)TEST_PERIOD.MIN01;
-        const int DEFAULT_TRANSFAR_RATE = 57600;
+        const int DEFAULT_TRANSFAR_RATE = 115200;
 
         public static UsbSerialPort UseUsbSerialPort = null;
 
@@ -59,6 +59,7 @@ namespace UsbSerialExamples
         CheckData CheckCyclic00ToFFInstance;
         CheckData CheckCyclic41To5AInstance;
         CheckData CheckSendDataInstance;
+        CheckData CheckSendDataCdcInstance;
 
 
 
@@ -161,6 +162,7 @@ namespace UsbSerialExamples
             CheckCyclic00ToFFInstance = new CheckCyclic00ToFF(this);
             CheckCyclic41To5AInstance = new CheckCyclic41To5A(this);
             CheckSendDataInstance = new CheckSendData(this);
+            CheckSendDataCdcInstance = new CheckSendDataCdc(this);
 
             CheckInstance = CheckCyclic00ToFFInstance;
             TestModeTextView.SetText(CheckInstance.TestMode, TextView.BufferType.Normal);
@@ -288,6 +290,7 @@ namespace UsbSerialExamples
                     TitleErrorTextView.Visibility = ViewStates.Visible;
                     ErrorCountTextView.Visibility = ViewStates.Visible;
                     TitleTotalTextView.SetText(Resource.String.title_total_receive);
+                    SetTransferRateDisplayState();
                     CheckInstance = CheckNmeaCheckSumInstance;
                     break;
                 case Resource.Id.test_mode_cyclic_0x00_to_0xff:
@@ -297,6 +300,7 @@ namespace UsbSerialExamples
                     TitleErrorTextView.Visibility = ViewStates.Visible;
                     ErrorCountTextView.Visibility = ViewStates.Visible;
                     TitleTotalTextView.SetText(Resource.String.title_total_receive);
+                    SetTransferRateDisplayState();
                     CheckInstance = CheckCyclic00ToFFInstance;
                     break;
                 case Resource.Id.test_mode_cyclic_0x41_to_0x5A:
@@ -306,6 +310,7 @@ namespace UsbSerialExamples
                     TitleErrorTextView.Visibility = ViewStates.Visible;
                     ErrorCountTextView.Visibility = ViewStates.Visible;
                     TitleTotalTextView.SetText(Resource.String.title_total_receive);
+                    SetTransferRateDisplayState();
                     CheckInstance = CheckCyclic41To5AInstance;
                     break;
                 case Resource.Id.test_mode_send_data:
@@ -315,8 +320,20 @@ namespace UsbSerialExamples
                     TitleErrorTextView.Visibility = ViewStates.Invisible;
                     ErrorCountTextView.Visibility = ViewStates.Gone;
                     TitleTotalTextView.SetText(Resource.String.title_total_send);
+                    SetTransferRateDisplayState();
                     CheckInstance = CheckSendDataInstance;
                     break;
+                case Resource.Id.test_mode_send_data_cdc:
+                    TestModeResourceId = Resource.Id.test_mode_send_data_cdc;
+                    TitleGoodTextView.Visibility = ViewStates.Visible;
+                    GoodCountTextView.Visibility = ViewStates.Visible;
+                    TitleErrorTextView.Visibility = ViewStates.Visible;
+                    ErrorCountTextView.Visibility = ViewStates.Visible;
+                    TitleTotalTextView.SetText(Resource.String.title_total_send);
+                    SetTransferRateDisplayState();
+                    CheckInstance = CheckSendDataCdcInstance;
+                    break;
+
                 default:
                     return false;
             }
@@ -377,7 +394,7 @@ namespace UsbSerialExamples
             ActivityStatusTextView.SetText(Resource.String.activity_status_standby);
             ModeChangeButton.SetText(Resource.String.test_start);
             TestPeriodMenuItem.SetEnabled(true);
-            if (!IsCdcDevice)
+            if (!IsCdcDevice || TestModeResourceId == Resource.Id.test_mode_send_data_cdc)
             {
                 TransfarRateMenuItem.SetEnabled(true);
             }
@@ -387,12 +404,17 @@ namespace UsbSerialExamples
             {
                 ((CheckSendData)CheckInstance).StopSendData();
             }
+
+            if (TestModeResourceId == Resource.Id.test_mode_send_data_cdc)
+            {
+                ((CheckSendDataCdc)CheckInstance).StopSendData();
+            }
             UpdateTestInfo("Test cancel : " + DateTime.Now.ToString("HH:mm:ss.fff/") + CheckInstance.GoodCountString + "-" + CheckInstance.ErrorCountString + "-" + CheckInstance.TotalCountString + "\n");
             Window.ClearFlags(WindowManagerFlags.KeepScreenOn);
         }
 
-        Object FinishTestMainTimerHandlerLock = new Object();
-        Object UpdateTestResultDisplayLock = new Object();
+        volatile Object FinishTestMainTimerHandlerLock = new Object();
+        volatile Object UpdateTestResultDisplayLock = new Object();
         void FinishTestMainTimerHandler(Object sender)
         {
             lock (FinishTestMainTimerHandlerLock)
@@ -414,7 +436,7 @@ namespace UsbSerialExamples
                         TotalCountTextView.SetText(CheckInstance.TotalCountString, TextView.BufferType.Normal);
                         ModeChangeButton.SetText(Resource.String.test_start);
                         TestPeriodMenuItem.SetEnabled(true);
-                        if (!IsCdcDevice)
+                        if (!IsCdcDevice || TestModeResourceId == Resource.Id.test_mode_send_data_cdc)
                         {
                             TransfarRateMenuItem.SetEnabled(true);
                         }
@@ -429,6 +451,11 @@ namespace UsbSerialExamples
                 {
                     ((CheckSendData)CheckInstance).StopSendData();
                 }
+                if (TestModeResourceId == Resource.Id.test_mode_send_data_cdc)
+                {
+                    ((CheckSendDataCdc)CheckInstance).StopSendData();
+                }
+                UpdateTestResultDisplay(null);
             }
         }
 
@@ -469,6 +496,11 @@ namespace UsbSerialExamples
             if (TestModeResourceId == Resource.Id.test_mode_send_data)
             {
                 ((CheckSendData)CheckInstance).StopSendData();
+            }
+
+            if (TestModeResourceId == Resource.Id.test_mode_send_data_cdc)
+            {
+                ((CheckSendDataCdc)CheckInstance).StopSendData();
             }
 
             if (UseUsbSerialPort != null)
@@ -517,7 +549,7 @@ namespace UsbSerialExamples
          * ガベージを無暗に増やさないように、関数内の自動変数は、すべて関数外で宣言する
          */
         int DataReceivedHandlerLoopCounter;
-        Object dataReceivedHandlerLockObject = new Object();
+        volatile Object dataReceivedHandlerLockObject = new Object();
         int DataRecivedHandlerLength;
         private void DataReceivedHandler(object sender, DataReceivedEventArgs e)
         {
@@ -554,6 +586,23 @@ namespace UsbSerialExamples
             intent.AddFlags(ActivityFlags.SingleTop | ActivityFlags.NoHistory);
             context.StartActivity(intent);
         }
+
+        private void SetTransferRateDisplayState()
+        {
+            if (IsCdcDevice && TestModeResourceId != Resource.Id.test_mode_send_data_cdc)
+            {
+                TransfarRateTitleTextView.Enabled = false;
+                TransfarRateValueTextView.Enabled = false;
+                TransfarRateMenuItem.SetEnabled(false);
+            }
+            else
+            {
+                TransfarRateTitleTextView.Enabled = true;
+                TransfarRateValueTextView.Enabled = true;
+                TransfarRateValueTextView.SetText(TransfarRate.ToString(), TextView.BufferType.Normal);
+                TransfarRateMenuItem.SetEnabled(true);
+            }
+        }
     }
 
     /*
@@ -583,14 +632,14 @@ namespace UsbSerialExamples
         public override string ErrorCountString { get { return errorCount.ToString(); } }
         public override string TotalCountString { get { return totalCount.ToString(); } }
         STATE state = STATE.IDLE;
-        Int64 goodCount = 0;
-        Int64 errorCount = 0;
-        Int64 totalCount = 0;
+        volatile int goodCount = 0;
+        volatile int errorCount = 0;
+        volatile int totalCount = 0;
         byte calcSum = 0;
         byte getSum = 0;
         byte firstCharValue;
         byte secondCharValue;
-        Object thisLock = new Object();
+        volatile Object thisLock = new Object();
         SerialConsoleActivity parentActivity;
 
         public CheckNmeaCheckSum(SerialConsoleActivity activity)
@@ -681,10 +730,9 @@ namespace UsbSerialExamples
         public override string ErrorCountString { get { return errorCount.ToString(); } }
         public override string TotalCountString { get { return totalCount.ToString(); } }
         STATE state = STATE.IDLE;
-        Int64 goodCount = 0;
-        Int64 errorCount = 0;
-        Int64 totalCount = 0;
-        Object thisLock = new Object();
+        volatile int goodCount = 0;
+        volatile int errorCount = 0;
+        volatile int totalCount = 0;
 
         byte LastData;
         int dataCount;
@@ -777,20 +825,16 @@ namespace UsbSerialExamples
         public override string GoodCountString { get { return goodCount.ToString(); } }
         public override string ErrorCountString { get { return errorCount.ToString(); } }
         public override string TotalCountString { get { return totalCount.ToString(); } }
-        
-        Int64 goodCount = 0;
-        Int64 errorCount = 0;
-        Int64 totalCount = 0;
+
+        volatile int goodCount = 0;
+        volatile int errorCount = 0;
+        volatile int totalCount = 0;
 
         volatile bool threadContinueFlag;
 
         public override void ProcData(byte data) { }
-        SerialConsoleActivity parentActivity;
 
-        public CheckSendData(SerialConsoleActivity activity)
-        {
-            parentActivity = activity;
-        }
+        public CheckSendData(SerialConsoleActivity activity) { }
 
         public override void ResetProc()
         {
@@ -825,9 +869,9 @@ namespace UsbSerialExamples
     }
 
     /*
- * データ受信のテスト
-* 　・設定された速度・時間データを受信し、0x41-0x5A(A-Z) の循環データか否かをチェックする
-*/
+     * データ受信のテスト
+     * 　・設定された速度・時間データを受信し、0x41-0x5A(A-Z) の循環データか否かをチェックする
+     */
     class CheckCyclic41To5A : CheckData
     {
         enum STATE : byte { IDLE, DATA };
@@ -837,10 +881,9 @@ namespace UsbSerialExamples
         public override string ErrorCountString { get { return errorCount.ToString(); } }
         public override string TotalCountString { get { return totalCount.ToString(); } }
         STATE state = STATE.IDLE;
-        Int64 goodCount = 0;
-        Int64 errorCount = 0;
-        Int64 totalCount = 0;
-        Object thisLock = new Object();
+        volatile int goodCount = 0;
+        volatile int errorCount = 0;
+        volatile int totalCount = 0;
         int dataCount;
 
         byte LastData;
@@ -920,6 +963,96 @@ namespace UsbSerialExamples
                     }
                     break;
             }
+        }
+    }
+
+    /*
+     * データ送信のテスト(CDC 用、相手方に Arduino UNO R3 を使う)
+     * 　・設定された速度・時間 0x00-0xff の循環データを送り続ける
+     * 　・データ送信のテストなので、ProcData() の中身はない
+     * 　・Arduino側で 0x00-0xFF の 256byte を正常に受信できたか否かをレスポンスの形でもらう(Arduino 側でエラーを表示する機能がないため)
+     * 　・Arduinoの CDC はボーレートの設定が必要
+     */
+    class CheckSendDataCdc : CheckData
+    {
+        enum STATE : byte { IDLE, DATA };
+
+        public override string TestMode { get { return "Send Data(Arduino)"; } }
+        public override string GoodCountString { get { return goodCount.ToString(); } }
+        public override string ErrorCountString { get { return errorCount.ToString(); } }
+        public override string TotalCountString { get { return totalCount.ToString(); } }
+        STATE state = STATE.IDLE;
+        volatile int goodCount = 0;
+        volatile int errorCount = 0;
+        volatile int totalCount = 0;
+
+        string message;
+
+        volatile bool threadContinueFlag;
+
+        public override void ProcData(byte data)
+        {
+            switch (state)
+            {
+                case STATE.IDLE:
+                    message = "";
+                    message += (char)data;
+                    state = STATE.DATA;
+                    break;
+                case STATE.DATA:
+                    if (data == 10)
+                    {
+                        state = STATE.IDLE;
+                        if (message.Substring(0, 1) == "G")
+                        {
+                            goodCount += 1;
+                        }
+                        else
+                        {
+                            errorCount += 1;
+                        }
+                    }
+                    else
+                    {
+                        message += (char)data;
+                    }
+                    break;
+            }
+        }
+
+        public CheckSendDataCdc(SerialConsoleActivity activity) { }
+
+        public override void ResetProc()
+        {
+            totalCount = 0;
+            goodCount = 0;
+            errorCount = 0;
+        }
+
+        public override void StartProc()
+        {
+            var thread = new Thread(() =>
+            {
+                byte[] sendDataBuf = new byte[256];
+
+                for (int i = 0; i < 256; i++)
+                {
+                    sendDataBuf[i] = (byte)i;
+                }
+
+                threadContinueFlag = true;
+                while (threadContinueFlag)
+                {
+                    totalCount += 1;
+                    SerialConsoleActivity.UseUsbSerialPort.Write(sendDataBuf, 1000);
+                }
+            });
+            thread.Start();
+        }
+
+        public void StopSendData()
+        {
+            threadContinueFlag = false;
         }
     }
 }

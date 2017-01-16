@@ -21,6 +21,10 @@
         android:id="@+id/test_mode_send_data"
         android:showAsAction="never"
         android:title="@string/test_mode_send_data"/>
+      <item
+        android:id="@+id/test_mode_send_data_cdc"
+        android:showAsAction="never"
+        android:title="@string/test_mode_send_data_cdc"/>
     </menu>
   </item>
   <item

@@ -43,5 +43,6 @@
   <string name="test_mode_nmew_check_sum">NMEA Check Sum</string>
   <string name="test_mode_cyclic_0x00_to_0xff">Cyclic 0x00 to 0xFF</string>
   <string name="test_mode_cyclic_0x41_to_0x5A">Cyclic 0x41 to 0x5A</string>
-  <string name="test_mode_send_data">Send Data</string>
+  <string name="test_mode_send_data">Send Data Test</string>
+  <string name="test_mode_send_data_cdc">Send Data Test(Arduino)</string>
 </resources>
