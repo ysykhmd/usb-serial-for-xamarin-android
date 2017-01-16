@@ -561,7 +561,6 @@ namespace UsbSerialExamples
      */
     abstract class CheckData
     {
-        protected string MessageBuffer;
         abstract public string TestMode { get; }
         abstract public string GoodCountString { get; }
         abstract public string ErrorCountString { get; }
@@ -734,10 +733,10 @@ namespace UsbSerialExamples
                         {
                             errorCount += 1;
                             totalCount += 1;
-                            MessageBuffer = "Error B: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            string msg = "Error B: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                                 {
-                                    parentActivity.UpdateTestInfo(MessageBuffer);
+                                    parentActivity.UpdateTestInfo(msg);
                                 }
                             );
                             LastData = data;
@@ -754,10 +753,10 @@ namespace UsbSerialExamples
                             errorCount += 1;
                             totalCount += 1;
                             state = STATE.IDLE;
-                            MessageBuffer = "Error A: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            string msg = "Error A: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                                 {
-                                    parentActivity.UpdateTestInfo(MessageBuffer);
+                                    parentActivity.UpdateTestInfo(msg);
                                 }
                             );
                         }
@@ -891,10 +890,10 @@ namespace UsbSerialExamples
                             errorCount += 1;
                             totalCount += 1;
                             LastData = data;
-                            MessageBuffer = "Error B: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            string msg = "Error B: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                             {
-                                parentActivity.UpdateTestInfo(MessageBuffer);
+                                parentActivity.UpdateTestInfo(msg);
                             }
                             );
                         }
@@ -911,10 +910,10 @@ namespace UsbSerialExamples
                             errorCount += 1;
                             totalCount += 1;
                             state = STATE.IDLE;
-                            MessageBuffer = "Error A: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            string msg = "Error A: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                             {
-                                parentActivity.UpdateTestInfo(MessageBuffer);
+                                parentActivity.UpdateTestInfo(msg);
                             }
                             );
                         }
