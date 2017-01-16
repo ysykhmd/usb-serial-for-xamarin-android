@@ -80,9 +80,9 @@ namespace Aid.UsbSerial
         // non-null when open()
         protected UsbDeviceConnection Connection { get; set; }
 
-        protected Object InternalReadBufferLock = new Object();
-        protected Object MainReadBufferLock = new Object();
-        protected Object MainWriteBufferLock = new Object();
+        volatile protected Object InternalReadBufferLock = new Object();
+        volatile protected Object MainReadBufferLock = new Object();
+        volatile protected Object MainWriteBufferLock = new Object();
 
         protected byte[] InternalReadBuffer;
         protected byte[] TempReadBuffer;
@@ -293,10 +293,11 @@ namespace Aid.UsbSerial
                     doTaskRxLen = ReadInternal();
 
                     // デバッグ時のログ出力用コード:
-                    //  ReadInternal() の読出しバイト数が 256byte以上になった場合に、それ以降20回、ReadInternal() が読みだしたデータをダンプする
+                    //  ReadInternal() の読出しバイト数が 一定数を超えた場合に、それ以降20回、ReadInternal() が読みだしたデータをダンプする
                     //  while の外で next を宣言する必要がある
-                    //  ProlificSerialPort.cs の受信エラー調査に使用した
-                    //if (doTaskRxLen >= 256 || next > 0)
+                    //  ProlificSerialPort.cs, CdcAcmSerailPort.cs の受信エラー調査に使用した
+                    //if (doTaskRxLen >= 256 || next > 0)   // ProlificSerialPort.cs 115200bps
+                    //if (doTaskRxLen >= 60 || next > 0)    // CdcAcmSerailPort.cs 115200bps
                     //{
                     //    string msg = "";
                     //    for (int i = 0; i < doTaskRxLen; i++)
@@ -359,7 +360,7 @@ namespace Aid.UsbSerial
         /*
          * ガベージを増やさないために関数内の自動変数は、すべて関数外で宣言する
          */
-                    int readFirstLength;
+        int readFirstLength;
         int readValidDataLength;
         public int Read(byte[] dest, int startIndex)
         {
