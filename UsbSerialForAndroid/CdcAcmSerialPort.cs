@@ -183,6 +183,7 @@ namespace Aid.UsbSerial
             // lock (InternalReadBufferLock)
             {
                 numberOfBytesRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
+                //Log.Info(Tag, "Data Length : " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + numberOfBytesRead.ToString() + "\n");
                 if (numberOfBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
@@ -236,7 +237,7 @@ namespace Aid.UsbSerial
                             + " bytes at offset " + offset + " length=" + src.Length);
                 }
 
-                Log.Debug(Tag, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
+                //Log.Debug(Tag, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
                 offset += amtWritten;
             }
             return offset;
