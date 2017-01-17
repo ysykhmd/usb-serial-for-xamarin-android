@@ -116,6 +116,7 @@ namespace Aid.UsbSerial
                     Log.Debug(Tag, "Async reads disabled.");
                 }
 				ResetParameters();
+                Dtr = true;
 				openedSuccessfully = true;
             }
             finally {
@@ -135,6 +136,7 @@ namespace Aid.UsbSerial
 
         public override void Close()
         {
+            Dtr = false;
 			StopUpdating ();
 			CloseConnection ();
 			IsOpened = false;

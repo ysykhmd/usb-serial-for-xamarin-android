@@ -310,7 +310,7 @@ namespace Aid.UsbSerial
 #else
                 ThreadPool.QueueUserWorkItem(o => ReadStatusThreadFunction());
 #endif
-
+                Dtr = true;
                 openedSuccessfully = true;
             }
             finally
@@ -355,6 +355,7 @@ namespace Aid.UsbSerial
                 {
                     CloseConnection();
                     IsOpened = false;
+                    Dtr = false;
                 }
             }
         }
