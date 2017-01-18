@@ -359,7 +359,6 @@ namespace UsbSerialExamples
         void StartTest()
         {
             Window.AddFlags(WindowManagerFlags.KeepScreenOn);
-            CheckInstance.ResetProc();
             ActivityStatusTextView.SetText(Resource.String.activity_status_testing);
             ModeChangeButton.SetText(Resource.String.test_cancel);
             TestTimeRemain = TestTimePeriod;
@@ -382,7 +381,7 @@ namespace UsbSerialExamples
             StartTestMainTimer();
             StartUpdateTestResultTimer();
             UseUsbSerialPort.ResetReadBuffer();
-            ((CheckData)CheckInstance).StartProc();
+            CheckInstance.StartProc();
             ActivityStatus = TEST_STATUS.TESTING;
         }
 
@@ -400,14 +399,9 @@ namespace UsbSerialExamples
             }
             TestModeMenuItem.SetEnabled(true);
             Log.Debug(TAG, "Test canceld : Error count" + CheckInstance.ErrorCountString);
-            if (TestModeResourceId == Resource.Id.test_mode_send_data)
+            if (CheckInstance is SendDataCheck)
             {
-                ((CheckSendData)CheckInstance).StopSendData();
-            }
-
-            if (TestModeResourceId == Resource.Id.test_mode_send_data_cdc)
-            {
-                ((CheckSendDataCdc)CheckInstance).StopSendData();
+                ((SendDataCheck)CheckInstance).StopSendData();
             }
             UpdateTestInfo("Test cancel : " + DateTime.Now.ToString("HH:mm:ss.fff/") + CheckInstance.GoodCountString + "-" + CheckInstance.ErrorCountString + "-" + CheckInstance.TotalCountString + "\n");
             Window.ClearFlags(WindowManagerFlags.KeepScreenOn);
@@ -447,13 +441,9 @@ namespace UsbSerialExamples
                         Window.ClearFlags(WindowManagerFlags.KeepScreenOn);
                     });
                 }
-                if (TestModeResourceId == Resource.Id.test_mode_send_data)
+                if (CheckInstance is SendDataCheck)
                 {
-                    ((CheckSendData)CheckInstance).StopSendData();
-                }
-                if (TestModeResourceId == Resource.Id.test_mode_send_data_cdc)
-                {
-                    ((CheckSendDataCdc)CheckInstance).StopSendData();
+                    ((SendDataCheck)CheckInstance).StopSendData();
                 }
                 UpdateTestResultDisplay(null);
             }
@@ -493,16 +483,10 @@ namespace UsbSerialExamples
         protected override void OnPause()
         {
             base.OnPause();
-            if (TestModeResourceId == Resource.Id.test_mode_send_data)
+            if (CheckInstance is SendDataCheck)
             {
-                ((CheckSendData)CheckInstance).StopSendData();
+                ((SendDataCheck)CheckInstance).StopSendData();
             }
-
-            if (TestModeResourceId == Resource.Id.test_mode_send_data_cdc)
-            {
-                ((CheckSendDataCdc)CheckInstance).StopSendData();
-            }
-
             if (UseUsbSerialPort != null)
             {
                 try
@@ -548,19 +532,19 @@ namespace UsbSerialExamples
          * このイベントハンドラはかなり頻繁に呼び出されるため、
          * ガベージを無暗に増やさないように、関数内の自動変数は、すべて関数外で宣言する
          */
-        int DataReceivedHandlerLoopCounter;
         volatile Object dataReceivedHandlerLockObject = new Object();
-        int DataRecivedHandlerLength;
-        private void DataReceivedHandler(object sender, DataReceivedEventArgs e)
+        int dataReceivedHandlerLoopCounter;
+        int dataRecivedHandlerReadDataLength;
+        void DataReceivedHandler(object sender, DataReceivedEventArgs e)
         {
             lock (dataReceivedHandlerLockObject)
             {
-                DataRecivedHandlerLength = e.Port.Read(readDataBuffer, 0);
+                dataRecivedHandlerReadDataLength = e.Port.Read(readDataBuffer, 0);
                 if (ActivityStatus == TEST_STATUS.TESTING)
                 {
-                     for (DataReceivedHandlerLoopCounter = 0; DataReceivedHandlerLoopCounter < DataRecivedHandlerLength; DataReceivedHandlerLoopCounter++)
+                     for (dataReceivedHandlerLoopCounter = 0; dataReceivedHandlerLoopCounter < dataRecivedHandlerReadDataLength; dataReceivedHandlerLoopCounter++)
                     {
-                        CheckInstance.ProcData(readDataBuffer[DataReceivedHandlerLoopCounter]);
+                        CheckInstance.ProcData(readDataBuffer[dataReceivedHandlerLoopCounter]);
                     }
                 }
             }
@@ -587,7 +571,7 @@ namespace UsbSerialExamples
             context.StartActivity(intent);
         }
 
-        private void SetTransferRateDisplayState()
+        void SetTransferRateDisplayState()
         {
             if (IsCdcDevice && TestModeResourceId != Resource.Id.test_mode_send_data_cdc)
             {
@@ -606,17 +590,34 @@ namespace UsbSerialExamples
     }
 
     /*
-     * テストクラスの仮想クラス
+     * テストクラスの親クラス
      */
     abstract class CheckData
     {
+        // テスト種別として画面上部の "Test mode" に表示される文字列
         abstract public string TestMode { get; }
-        abstract public string GoodCountString { get; }
-        abstract public string ErrorCountString { get; }
-        abstract public string TotalCountString { get; }
+        public string GoodCountString { get { return goodCount.ToString(); } }
+        public string ErrorCountString { get { return errorCount.ToString(); } }
+        public string TotalCountString { get { return totalCount.ToString(); } }
+
+        // 成功した数
+        protected volatile int goodCount = 0;
+        // 失敗した数
+        protected volatile int errorCount = 0;
+        // 成功＋失敗の数
+        protected volatile int totalCount = 0;
+
+        // 受信データを 1byte ずつ処理する
         abstract public void ProcData(byte data);
-        abstract public void ResetProc();
+
+        // テストの開始
         abstract public void StartProc();
+    }
+
+    interface SendDataCheck
+    {
+        //  テストデータの送信停止
+        void StopSendData();
     }
 
     /*
@@ -628,34 +629,24 @@ namespace UsbSerialExamples
         enum STATE : byte { IDLE, DATA, SUM1, SUM2 };
 
         public override string TestMode { get { return "NMEA Check Sum"; } }
-        public override string GoodCountString  { get { return goodCount. ToString(); } }
-        public override string ErrorCountString { get { return errorCount.ToString(); } }
-        public override string TotalCountString { get { return totalCount.ToString(); } }
+
+        SerialConsoleActivity parentActivity;
         STATE state = STATE.IDLE;
-        volatile int goodCount = 0;
-        volatile int errorCount = 0;
-        volatile int totalCount = 0;
         byte calcSum = 0;
         byte getSum = 0;
         byte firstCharValue;
         byte secondCharValue;
-        volatile Object thisLock = new Object();
-        SerialConsoleActivity parentActivity;
 
         public CheckNmeaCheckSum(SerialConsoleActivity activity)
         {
             parentActivity = activity;
         }
 
-        public override void ResetProc()
+        public override void StartProc()
         {
             goodCount = 0;
             errorCount = 0;
             totalCount = 0;
-        }
-
-        public override void StartProc()
-        {
             state = STATE.IDLE;
         }
 
@@ -688,18 +679,15 @@ namespace UsbSerialExamples
                     secondCharValue = CharToHex(data);
                     getSum = (byte)(firstCharValue * 16 + secondCharValue);
                     state = STATE.IDLE;
-                    lock(thisLock)
+                    if (calcSum == getSum)
                     {
-                        if (calcSum == getSum)
-                        {
-                            goodCount += 1;
-                        }
-                        else
-                        {
-                            errorCount += 1;
-                        }
-                        totalCount += 1;
+                        goodCount += 1;
                     }
+                    else
+                    {
+                        errorCount += 1;
+                    }
+                    totalCount += 1;
                     break;
             }
         }
@@ -719,40 +707,30 @@ namespace UsbSerialExamples
 
     /*
      * データ受信のテスト
-    * 　・設定された速度・時間データを受信し、0x00-0xff の循環データか否かをチェックする
-    */
+     *　 ・設定された速度・時間データを受信し、0x00-0xff の循環データか否かをチェックする
+     */
     class CheckCyclic00ToFF : CheckData
     {
         enum STATE : byte { IDLE, DATA };
 
         public override string TestMode { get { return "Cyclic 0x00 to 0xFF"; } }
-        public override string GoodCountString { get { return goodCount.ToString(); } }
-        public override string ErrorCountString { get { return errorCount.ToString(); } }
-        public override string TotalCountString { get { return totalCount.ToString(); } }
-        STATE state = STATE.IDLE;
-        volatile int goodCount = 0;
-        volatile int errorCount = 0;
-        volatile int totalCount = 0;
 
-        byte LastData;
-        int dataCount;
         SerialConsoleActivity parentActivity;
+        STATE state = STATE.IDLE;
+        int dataCount;
+        byte lastData;
 
         public CheckCyclic00ToFF(SerialConsoleActivity activity)
         {
             parentActivity = activity;
         }
 
-        public override void ResetProc()
+        public override void StartProc()
         {
             goodCount = 0;
             errorCount = 0;
             totalCount = 0;
             dataCount = 0;
-        }
-
-        public override void StartProc()
-        {
             state = STATE.IDLE;
         }
 
@@ -765,43 +743,43 @@ namespace UsbSerialExamples
                     if (0x00 == data)
                     {
                         state = STATE.DATA;
-                        LastData = data;
+                        lastData = data;
                     }
                     break;
                 case STATE.DATA:
                     if (0x00 == data)
                     {
-                        if (0xFF == LastData)
+                        if (0xFF == lastData)
                         {
                             goodCount += 1;
                             totalCount += 1;
-                            LastData = data;
+                            lastData = data;
                         }
                         else
                         {
                             errorCount += 1;
                             totalCount += 1;
-                            string msg = "Error B: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            string msg = "Error B: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + lastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                                 {
                                     parentActivity.UpdateTestInfo(msg);
                                 }
                             );
-                            LastData = data;
+                            lastData = data;
                         }
                     }
                     else
                     {
-                        if (data - 1 == LastData)
+                        if (data - 1 == lastData)
                         {
-                            LastData = data;
+                            lastData = data;
                         }
                         else
                         {
                             errorCount += 1;
                             totalCount += 1;
                             state = STATE.IDLE;
-                            string msg = "Error A: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            string msg = "Error A: " + dataCount.ToString("x8") + ":" + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + lastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
                             parentActivity.RunOnUiThread(() =>
                                 {
                                     parentActivity.UpdateTestInfo(msg);
@@ -815,34 +793,111 @@ namespace UsbSerialExamples
     }
 
     /*
-     * データ送信のテスト
-     * 　・設定された速度・時間 0x00-0xff の循環データを送り続ける
-     * 　・データ送信のテストなので、ProcData() の中身はない
-     */ 　
-    class CheckSendData : CheckData
+     * データ受信のテスト
+     * 　・設定された速度・時間データを受信し、0x41-0x5A(A-Z) の循環データか否かをチェックする
+     */
+    class CheckCyclic41To5A : CheckData
     {
-        public override string TestMode { get { return "Send Data"; } }
-        public override string GoodCountString { get { return goodCount.ToString(); } }
-        public override string ErrorCountString { get { return errorCount.ToString(); } }
-        public override string TotalCountString { get { return totalCount.ToString(); } }
+        enum STATE : byte { IDLE, DATA };
 
-        volatile int goodCount = 0;
-        volatile int errorCount = 0;
-        volatile int totalCount = 0;
+        public override string TestMode { get { return "Cyclic 0x41 to 0x5A"; } }
 
-        volatile bool threadContinueFlag;
+        SerialConsoleActivity parentActivity;
+        STATE state = STATE.IDLE;
+        int dataCount;
+        byte lastData;
 
-        public override void ProcData(byte data) { }
-
-        public CheckSendData(SerialConsoleActivity activity) { }
-
-        public override void ResetProc()
+        public CheckCyclic41To5A(SerialConsoleActivity activity)
         {
-            totalCount = 0;
+            parentActivity = activity;
         }
 
         public override void StartProc()
         {
+            goodCount = 0;
+            errorCount = 0;
+            totalCount = 0;
+            dataCount = 0;
+            state = STATE.IDLE;
+        }
+
+        public override void ProcData(byte data)
+        {
+            dataCount += 1;
+            switch (state)
+            {
+                case STATE.IDLE:
+                    if (0x41 == data)
+                    {
+                        state = STATE.DATA;
+                        lastData = data;
+                    }
+                    break;
+                case STATE.DATA:
+                    if (0x41 == data)
+                    {
+                        if (0x5A == lastData)
+                        {
+                            goodCount += 1;
+                            totalCount += 1;
+                            lastData = data;
+                        }
+                        else
+                        {
+                            errorCount += 1;
+                            totalCount += 1;
+                            lastData = data;
+                            string msg = "Error B: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + lastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            parentActivity.RunOnUiThread(() =>
+                            {
+                                parentActivity.UpdateTestInfo(msg);
+                            }
+                            );
+                        }
+
+                    }
+                    else
+                    {
+                        if (data - 1 == lastData)
+                        {
+                            lastData = data;
+                        }
+                        else
+                        {
+                            errorCount += 1;
+                            totalCount += 1;
+                            state = STATE.IDLE;
+                            string msg = "Error A: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + lastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
+                            parentActivity.RunOnUiThread(() =>
+                            {
+                                parentActivity.UpdateTestInfo(msg);
+                            }
+                            );
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
+    /*
+     * データ送信のテスト
+     * 　・設定された速度・時間 0x00-0xff の循環データを送り続ける
+     * 　・データを送出するだけなので、ProcData() の中身はない
+     */
+    class CheckSendData : CheckData, SendDataCheck
+    {
+        public override string TestMode { get { return "Send Data"; } }
+
+        volatile bool threadContinueFlag;
+
+        public CheckSendData(SerialConsoleActivity activity) { }
+
+        public override void ProcData(byte data) { }
+
+        public override void StartProc()
+        {
+            totalCount = 0;
             var thread = new Thread(() =>
             {
                 byte[] sendDataBuf = new byte[256];
@@ -869,126 +924,23 @@ namespace UsbSerialExamples
     }
 
     /*
-     * データ受信のテスト
-     * 　・設定された速度・時間データを受信し、0x41-0x5A(A-Z) の循環データか否かをチェックする
-     */
-    class CheckCyclic41To5A : CheckData
-    {
-        enum STATE : byte { IDLE, DATA };
-
-        public override string TestMode { get { return "Cyclic 0x41 to 0x5A"; } }
-        public override string GoodCountString { get { return goodCount.ToString(); } }
-        public override string ErrorCountString { get { return errorCount.ToString(); } }
-        public override string TotalCountString { get { return totalCount.ToString(); } }
-        STATE state = STATE.IDLE;
-        volatile int goodCount = 0;
-        volatile int errorCount = 0;
-        volatile int totalCount = 0;
-        int dataCount;
-
-        byte LastData;
-        SerialConsoleActivity parentActivity;
-
-        public CheckCyclic41To5A(SerialConsoleActivity activity)
-        {
-            parentActivity = activity;
-        }
-
-        public override void ResetProc()
-        {
-            goodCount = 0;
-            errorCount = 0;
-            totalCount = 0;
-            dataCount = 0;
-        }
-
-        public override void StartProc()
-        {
-            state = STATE.IDLE;
-        }
-
-        public override void ProcData(byte data)
-        {
-            dataCount += 1;
-            switch (state)
-            {
-                case STATE.IDLE:
-                    if (0x41 == data)
-                    {
-                        state = STATE.DATA;
-                        LastData = data;
-                    }
-                    break;
-                case STATE.DATA:
-                    if (0x41 == data)
-                    {
-                        if (0x5A == LastData)
-                        {
-                            goodCount += 1;
-                            totalCount += 1;
-                            LastData = data;
-                        }
-                        else
-                        {
-                            errorCount += 1;
-                            totalCount += 1;
-                            LastData = data;
-                            string msg = "Error B: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
-                            parentActivity.RunOnUiThread(() =>
-                            {
-                                parentActivity.UpdateTestInfo(msg);
-                            }
-                            );
-                        }
-
-                    }
-                    else
-                    {
-                        if (data - 1 == LastData)
-                        {
-                            LastData = data;
-                        }
-                        else
-                        {
-                            errorCount += 1;
-                            totalCount += 1;
-                            state = STATE.IDLE;
-                            string msg = "Error A: " + dataCount.ToString("x8") + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + LastData.ToString("x2") + "-" + data.ToString("x2") + "\n";
-                            parentActivity.RunOnUiThread(() =>
-                            {
-                                parentActivity.UpdateTestInfo(msg);
-                            }
-                            );
-                        }
-                    }
-                    break;
-            }
-        }
-    }
-
-    /*
      * データ送信のテスト(CDC 用、相手方に Arduino UNO R3 を使う)
      * 　・設定された速度・時間 0x00-0xff の循環データを送り続ける
-     * 　・データ送信のテストなので、ProcData() の中身はない
      * 　・Arduino側で 0x00-0xFF の 256byte を正常に受信できたか否かをレスポンスの形でもらう(Arduino 側でエラーを表示する機能がないため)
+     * 　・ProcData() を使って Arduino からレスポンスを処理する
      * 　・Arduinoの CDC はボーレートの設定が必要
      */
-    class CheckSendDataCdc : CheckData
+    class CheckSendDataCdc : CheckData, SendDataCheck
     {
         enum STATE : byte { IDLE, DATA };
 
         public override string TestMode { get { return "Send Data(Arduino)"; } }
-        public override string GoodCountString { get { return goodCount.ToString(); } }
-        public override string ErrorCountString { get { return errorCount.ToString(); } }
-        public override string TotalCountString { get { return totalCount.ToString(); } }
+
         STATE state = STATE.IDLE;
-        volatile int goodCount = 0;
-        volatile int errorCount = 0;
-        volatile int totalCount = 0;
-
         string message;
-
         volatile bool threadContinueFlag;
+
+        public CheckSendDataCdc(SerialConsoleActivity activity) { }
 
         public override void ProcData(byte data)
         {
@@ -1020,17 +972,11 @@ namespace UsbSerialExamples
             }
         }
 
-        public CheckSendDataCdc(SerialConsoleActivity activity) { }
-
-        public override void ResetProc()
+        public override void StartProc()
         {
             totalCount = 0;
             goodCount = 0;
             errorCount = 0;
-        }
-
-        public override void StartProc()
-        {
             var thread = new Thread(() =>
             {
                 byte[] sendDataBuf = new byte[256];
