@@ -68,7 +68,7 @@
     </None>
     <Compile Include="DeviceListActivity.cs" />
     <AndroidResource Include="Resources\layout\main.axml" />
-    <Content Include="Properties\AndroidManifest.xml" />
+    <None Include="Properties\AndroidManifest.xml" />
     <Compile Include="SerialConsoleActivity.cs" />
     <AndroidResource Include="Resources\layout\serial_console.axml">
       <SubType>Designer</SubType>
