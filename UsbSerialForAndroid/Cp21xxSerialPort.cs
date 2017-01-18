@@ -161,18 +161,14 @@ namespace Aid.UsbSerial
         int numberOfByteRead;
         protected override int ReadInternal()
         {
-            // 一つのスレッドからしか呼出されないので、このロックは不要
-            //lock (InternalReadBufferLock)
+            numberOfByteRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
+            if (numberOfByteRead < 0)
             {
-                numberOfByteRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
-                if (numberOfByteRead < 0)
-                {
-                    // This sucks: we get -1 on timeout, not 0 as preferred.
-                    // We *should* use UsbRequest, except it has a bug/api oversight
-                    // where there is no way to determine the number of bytes read
-                    // in response :\ -- http://b.android.com/28023
-                    return 0;
-                }
+                // This sucks: we get -1 on timeout, not 0 as preferred.
+                // We *should* use UsbRequest, except it has a bug/api oversight
+                // where there is no way to determine the number of bytes read
+                // in response :\ -- http://b.android.com/28023
+                return 0;
             }
             return numberOfByteRead;
         }

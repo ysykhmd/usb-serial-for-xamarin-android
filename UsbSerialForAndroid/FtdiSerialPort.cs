@@ -93,7 +93,7 @@ namespace Aid.UsbSerial
         /**
          * FTDI chip types.
          */
-        private enum DeviceType
+        enum DeviceType
 		{
 			TYPE_BM,
 			TYPE_AM,
@@ -123,31 +123,31 @@ namespace Aid.UsbSerial
         /**
          * Reset the port.
          */
-        private const int SIO_RESET_REQUEST = 0;
+        const int SIO_RESET_REQUEST = 0;
 
         /**
          * Set the modem control register.
          */
-        private const int SIO_MODEM_CTRL_REQUEST = 1;
+        const int SIO_MODEM_CTRL_REQUEST = 1;
 
         /**
          * Set flow control register.
          */
-        private const int SIO_SET_FLOW_CTRL_REQUEST = 2;
+        const int SIO_SET_FLOW_CTRL_REQUEST = 2;
 
         /**
          * Set baud rate.
          */
-        private const int SIO_SET_BAUD_RATE_REQUEST = 3;
+        const int SIO_SET_BAUD_RATE_REQUEST = 3;
 
         /**
          * Set the data characteristics of the port.
          */
-        private const int SIO_SET_DATA_REQUEST = 4;
+        const int SIO_SET_DATA_REQUEST = 4;
 
-        private const int SIO_RESET_SIO = 0;
-        private const int SIO_RESET_PURGE_RX = 1;
-        private const int SIO_RESET_PURGE_TX = 2;
+        const int SIO_RESET_SIO = 0;
+        const int SIO_RESET_PURGE_RX = 1;
+        const int SIO_RESET_PURGE_TX = 2;
 
         public const int FtdiDEVICE_OUT_REQTYPE =
                 UsbConstants.UsbTypeVendor | USB_RECIP_DEVICE | USB_ENDPOINT_OUT;
@@ -158,18 +158,18 @@ namespace Aid.UsbSerial
         /**
          * Length of the modem status header, transmitted with every read.
          */
-        private const int MODEM_STATUS_HEADER_LENGTH = 2;
+        const int MODEM_STATUS_HEADER_LENGTH = 2;
 
-        private const string TAG = "FtdiSerialPort";
+        const string TAG = "FtdiSerialPort";
 
-        private DeviceType CurrentDeviceType;
+        DeviceType CurrentDeviceType;
 
         /**
          * Due to http://b.android.com/28023 , we cannot use UsbRequest async reads
          * since it gives no indication of number of bytes read. Set this to
          * {@code true} on platforms where it is fixed.
          */
-        private static bool ENABLE_ASYNC_READS = false;
+        static bool ENABLE_ASYNC_READS = false;
 
         UsbEndpoint readEndpoint;
         UsbEndpoint writeEndpoint;
@@ -249,11 +249,10 @@ namespace Aid.UsbSerial
             if (ENABLE_ASYNC_READS)
             {
                 int readAmt;
-                lock (InternalReadBufferLock)
-                {
-                    // MainReadBuffer is only used for maximum read size.
-                    readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
-                }
+
+                // MainReadBuffer is only used for maximum read size.
+                readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
+
 
                 UsbRequest request = new UsbRequest();
                 request.Initialize(Connection, readEndpoint);
@@ -283,55 +282,42 @@ namespace Aid.UsbSerial
             }
             else
             {
-                // 一つのスレッドの中の一つのループの中で呼出されているので、このロックは不要
-//              lock (InternalReadBufferLock)
+                // Nexus5:データが読みだされるバッファが 256 の倍数以外では 57600bps 以上で Connection.BulkTransfer() が -1 を返す。原因は不明
+                totalBytesRead = Connection.BulkTransfer(readEndpoint, InternalReadBuffer,
+                        DEFAULT_INTERNAL_READ_BUFFER_SIZE, DEFAULT_READ_TIMEOUT_MILLISEC);
+
+                if (totalBytesRead < MODEM_STATUS_HEADER_LENGTH)
                 {
-                    // Nexus5:データが読みだされるバッファが 256 の倍数以外では 57600bps 以上で Connection.BulkTransfer() が -1 を返す。原因は不明
-                    totalBytesRead = Connection.BulkTransfer(readEndpoint, InternalReadBuffer,
-                            DEFAULT_INTERNAL_READ_BUFFER_SIZE, DEFAULT_READ_TIMEOUT_MILLISEC);
-
-                    if (totalBytesRead < MODEM_STATUS_HEADER_LENGTH)
-                    {
-                        throw new IOException("Expected at least " + MODEM_STATUS_HEADER_LENGTH + " bytes");
-                    }
-                    /*
-                     * 以下は FilterStatusBytes() として別関数だったものを組み込んだ
-                     * 関数呼び出しの際に引数として渡されるオブジェクトを生成しないための処置
-                     */
-                    /**
-                     * Filter FTDI status bytes from buffer
-                     * @param InternalReadBuffer The source buffer (which contains status bytes)
-                     * @param TempReadBuffer The destination buffer to write the status bytes into (can be src)
-                     * @param totalBytesRead Number of bytes read to src
-                     * @param maxPacketSize The USB endpoint max packet size
-                     * @return The number of payload bytes
-                     */
-                    srcPtr = MODEM_STATUS_HEADER_LENGTH;
-                    destPtr = 0;
-                    validDataCount = maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
-                    rawDataCount = 0;
-
-                    while (totalBytesRead > 0)
-                    {
-                        if (totalBytesRead > maxPacketSize)
-                        {
-                            validDataCountInPacket = validDataCount;
-                            totalBytesRead -= maxPacketSize;
-                        }
-                        else
-                        {
-                            validDataCountInPacket = totalBytesRead - MODEM_STATUS_HEADER_LENGTH;
-                            totalBytesRead = 0;
-                        }
-
-                        Array.Copy(InternalReadBuffer, srcPtr, TempReadBuffer, destPtr, validDataCountInPacket);
-                        srcPtr += maxPacketSize;
-                        destPtr += validDataCount;
-
-                        rawDataCount += validDataCountInPacket;
-                    }
-                    return rawDataCount;
+                    throw new IOException("Expected at least " + MODEM_STATUS_HEADER_LENGTH + " bytes");
                 }
+
+                //以下は FilterStatusBytes() として別関数だったものを組み込んだ
+                //関数呼び出しの際に引数として渡されるオブジェクトを生成しないための処置
+                srcPtr = MODEM_STATUS_HEADER_LENGTH;
+                destPtr = 0;
+                validDataCount = maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
+                rawDataCount = 0;
+
+                while (totalBytesRead > 0)
+                {
+                    if (totalBytesRead > maxPacketSize)
+                    {
+                        validDataCountInPacket = validDataCount;
+                        totalBytesRead -= maxPacketSize;
+                    }
+                    else
+                    {
+                        validDataCountInPacket = totalBytesRead - MODEM_STATUS_HEADER_LENGTH;
+                        totalBytesRead = 0;
+                    }
+
+                    Array.Copy(InternalReadBuffer, srcPtr, TempReadBuffer, destPtr, validDataCountInPacket);
+                    srcPtr += maxPacketSize;
+                    destPtr += validDataCount;
+
+                    rawDataCount += validDataCountInPacket;
+                }
+                return rawDataCount;
             }
         }
 
@@ -378,7 +364,7 @@ namespace Aid.UsbSerial
             return writeSrcBufferOffset;
         }
 
-        private int SetBaudRate(int baudRate)
+        int SetBaudRate(int baudRate)
         {
             long[] vals = ConvertBaudrate(baudRate);
             long actualBaudrate = vals[0];
@@ -441,7 +427,7 @@ namespace Aid.UsbSerial
             }
         }
 
-        private long[] ConvertBaudrate(int baudrate)
+        long[] ConvertBaudrate(int baudrate)
         {
             // TODO(mikey): Braindead transcription of libfti method.  Clean up,
             // using more idiomatic Java where possible.

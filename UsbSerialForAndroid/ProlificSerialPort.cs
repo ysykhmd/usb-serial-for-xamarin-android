@@ -94,12 +94,17 @@ namespace Aid.UsbSerial
         bool StopReadStatusThread = false;
         IOException ReadStatusException = null;
 
+        int CurrentBaudRate;
+        int CurrentDataBits;
+        StopBits CurrentStopBits;
+        Parity CurrentParity;
+
         public ProlificSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)
         {
         }
 
-        private byte[] InControlTransfer(int requestType, int request,
+        byte[] InControlTransfer(int requestType, int request,
                 int value, int index, int length)
         {
             byte[] buffer = new byte[length];
@@ -111,7 +116,7 @@ namespace Aid.UsbSerial
             return buffer;
         }
 
-        private void OutControlTransfer(int requestType, int request,
+        void OutControlTransfer(int requestType, int request,
                 int value, int index, byte[] data)
         {
             int length = (data == null) ? 0 : data.Length;
@@ -122,27 +127,27 @@ namespace Aid.UsbSerial
             }
         }
 
-        private byte[] VendorIn(int value, int index, int length)
+        byte[] VendorIn(int value, int index, int length)
         {
             return InControlTransfer(VENDOR_READ_REQUEST_TYPE, VENDOR_READ_REQUEST, value, index, length);
         }
 
-        private void VendorOut(int value, int index, byte[] data)
+        void VendorOut(int value, int index, byte[] data)
         {
             OutControlTransfer(VENDOR_WRITE_REQUEST_TYPE, VENDOR_WRITE_REQUEST, value, index, data);
         }
 
-        private void ResetDevice()
+        void ResetDevice()
         {
             PurgeHwBuffers(true, true);
         }
 
-        private void CtrlOut(int request, int value, int index, byte[] data)
+        void CtrlOut(int request, int value, int index, byte[] data)
         {
             OutControlTransfer(ProlificCTRL_OUT_REQTYPE, request, value, index, data);
         }
 
-        private void DoBlackMagic()
+        void DoBlackMagic()
         {
             VendorIn(0x8484, 0, 1);
             VendorOut(0x0404, 0, null);
@@ -157,14 +162,14 @@ namespace Aid.UsbSerial
             VendorOut(2, (DeviceType == DEVICE_TYPE_HX) ? 0x44 : 0x24, null);
         }
 
-        private void SetControlLines(int newControlLinesValue)
+        void SetControlLines(int newControlLinesValue)
         {
             CtrlOut(SET_CONTROL_REQUEST, newControlLinesValue, 0, null);
             ControlLinesValue = newControlLinesValue;
         }
 
 
-        private object ReadStatusThreadFunction()
+        object ReadStatusThreadFunction()
         {
             byte[] readStatusBuffer = new byte[STATUS_BUFFER_SIZE];
             int ReadStatusBytesCount;
@@ -193,7 +198,7 @@ namespace Aid.UsbSerial
             return null;
         }
 
-        private int Status
+        int Status
         {
             get
             {
@@ -209,7 +214,7 @@ namespace Aid.UsbSerial
             }
         }
 
-        private bool TestStatusFlag(int flag)
+        bool TestStatusFlag(int flag)
         {
             return ((Status & flag) == flag);
         }
@@ -417,10 +422,6 @@ namespace Aid.UsbSerial
             return offset;
         }
 
-        int CurrentBaudRate;
-        int CurrentDataBits;
-        StopBits CurrentStopBits;
-        Parity CurrentParity;
         protected override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
         {
             if ((CurrentBaudRate == baudRate) && (CurrentDataBits == dataBits)

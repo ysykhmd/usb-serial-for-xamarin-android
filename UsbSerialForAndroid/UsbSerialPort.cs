@@ -36,30 +36,41 @@ namespace Aid.UsbSerial
 {
     public abstract class UsbSerialPort
     {
-        private const string TAG = "UsbSerailPort";
+        const string TAG = "UsbSerailPort";
 
         /**
-         * バッファサイズについて
+         * InternalReadBuffer[] について
+         *  ・FtdiSerialPort.cs でしか使っていない
+         *  ・DEFAULT_TEMP_READ_BUFFER_SIZE と DEFAULT_INTERNAL_READ_BUFFER_SIZE のサイズは同じにすること。
+         */
+        public const int DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024;
+        /**
+         * TempReadBuffer のサイズについて
          *   Nexus5(Android 5.1.1/LMY48B)+FT-232RL の組み合わせで
          *     ・115200bps でそれなりに安定動作させるには、実測で InternalReadBuffer[] に 1024 以上必要
          *     ・FtdiSerialPort.cs で呼び出している Connection.BulkTransfer() は、バッファのサイズが 256 の倍数以外では、ボーレートが 57600bps 以上でエラーを返す。原因は不明
-         *     ・InternalReadBuffer[] は 16384byte より大きくても使われることはない
+         *     ・InternalReadBuffer[] は、最大 16384byte までしか使われない(それより大きくても 16384byte を超える部分は使われない)
          *     ・57600,115200bps では InternalReadBuffer[] 一杯にデータが詰め込まれてくることがある。このときInternalReadBuffer[16384]とすると 57,600bps で 2.84..秒、
          *       115200bps で 1.422..秒となる。データに時間情報を含む場合は要注意(DEFAULT_READ_TIMEOUT_MILLISEC = 0 の場合)
          *     ・InternalReadBuffer[4096] で 115200bps で 0x00-0xFF のデータを連続受信した場合、数分に一度エラーを起こす(30分に４回とか)。InternalReadBuffer[] のサイズ
          *     　を調整しても、状況が大きく変わることがなかった
          *   Nexus5(Android 5.1.1/LMY48B)+CP2102 の組み合わせで
-         *     ・DEFAULT_INTERNAL_READ_BUFFER_SIZE = 16 * 1024 だと、57600, 115200bps でデータを受信できない(原因不明)
-         *     ・DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024 だと、4,800bps、115200bps ともにデータを受信できる
-         *     ・DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024 だと、19,200bps でデータ受信イベントの発生周期が 2.133..秒 となる(DEFAULT_READ_TIMEOUT_MILLISEC = 0 の場合)
-         *     ・DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024 だと、38,400bps でデータ受信イベントの発生周期が 1.066..秒 となる(DEFAULT_READ_TIMEOUT_MILLISEC = 0 の場合)
+         *     ・DEFAULT_TEMP_READ_BUFFER_SIZE = 16 * 1024 だと、57600, 115200bps でデータを受信できない(原因不明)
+         *     ・DEFAULT_TEMP_READ_BUFFER_SIZE = 4 * 1024 だと、4,800bps、115200bps ともにデータを受信できる
+         *     ・DEFAULT_TEMP_READ_BUFFER_SIZE = 4 * 1024 だと、19,200bps でデータ受信イベントの発生周期が 2.133..秒 となる(DEFAULT_READ_TIMEOUT_MILLISEC = 0 の場合)
+         *     ・DEFAULT_TEMP_READ_BUFFER_SIZE = 4 * 1024 だと、38,400bps でデータ受信イベントの発生周期が 1.066..秒 となる(DEFAULT_READ_TIMEOUT_MILLISEC = 0 の場合)
+         *   Nexus5(Android 5.1.1/LMY48B)+PL2303HXA, PL2303HXD の組み合わせで
+         *     ・InternalReadBuffer[] は 115200bps でもせいぜい 1024byte 程度しか使われない印象がある。一定周期ごとにデータが Android OS から上がってくるような動き
+         *   Nexus5(Android 5.1.1/LMY48B)+u-blox6 の組み合わせで
+         *     ・InternalReadBuffer[] は 115200bps でもせいぜい 1024byte 程度しか使われない印象がある。通常は一定周期(4ms程度?)ごとにデータが Android OS から上がってくるような動き
          */
-        public const int DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024;
         // 変更する場合は FtdiSerailPort.cs の ReadInternal() 内の Connection.BulkTransfer() 呼び出し部分を注意。
         public const int DEFAULT_TEMP_READ_BUFFER_SIZE = DEFAULT_INTERNAL_READ_BUFFER_SIZE;
         // この値が小さいと、FT-232R で転送速度が速いとき、最初のデータがフォアグラウンドから読みだせないことがある。
         public const int DEFAULT_READ_BUFFER_SIZE = 16 * 1024;
         public const int DEFAULT_WRITE_BUFFER_SIZE = 16 * 1024;
+        // UsbSerailForAndroid としての初期設定値
+        //   UsbSerialExamples と組み合わせる場合は SerialConsoleActivity.cs の DEFAULT_TRANSFAR_RATE が優先される
         public const int DefaultBaudrate = 9600;
         public const int DefaultDataBits = 8;
         public const Parity DefaultParity = Parity.None;
@@ -70,7 +81,7 @@ namespace Aid.UsbSerial
         //   500 だと 0x00-0xff/ 57600, 115200bps を受信できない
         //   0 だと 0x00-0xff/57600bps/innerBuffer 16384byte でデータ受信のイベント発生の間隔が３秒近く、115200 bps だと 1.5秒程度開くことがある
         // Nexus5(Android 5.1.1/LMY48B)+CP2102 の組み合わせで
-        //   ・DEFAULT_INTERNAL_READ_BUFFER_SIZE = 4 * 1024 だと、19200bps では 300 を指定すると受信できない(9600bps では受信できた)
+        //   ・DEFAULT_TEMP_READ_BUFFER_SIZE = 4 * 1024 だと、19200bps では 300 を指定すると受信できない(9600bps では受信できた)
         public const int DEFAULT_READ_TIMEOUT_MILLISEC = 0;
 
         public event EventHandler<DataReceivedEventArgs> DataReceivedEventLinser;
@@ -80,10 +91,10 @@ namespace Aid.UsbSerial
         // non-null when open()
         protected UsbDeviceConnection Connection { get; set; }
 
-        volatile protected Object InternalReadBufferLock = new Object();
         volatile protected Object MainReadBufferLock = new Object();
         volatile protected Object MainWriteBufferLock = new Object();
 
+        // FtdiSerialPort.cs でしか使っていない
         protected byte[] InternalReadBuffer;
         protected byte[] TempReadBuffer;
         /** Main read buffer.  Guarded by {@link #MainReadBufferLock}. */
@@ -94,9 +105,9 @@ namespace Aid.UsbSerial
         /** Internal write buffer.  Guarded by {@link #MainWriteBufferLock}. */
         protected byte[] MainWriteBuffer;
 
-        private int dataBits;
+        int dataBits;
 
-        private volatile bool _ContinueUpdating;
+        volatile bool _ContinueUpdating;
         public bool IsOpened { get; protected set; }
         public int Baudrate { get; set; }
         public int DataBits
@@ -165,6 +176,8 @@ namespace Aid.UsbSerial
         /**
          * Sets the size of the internal buffer used to exchange data with the USB
          * stack for read operations.  Most users should not need to change this.
+         * 
+         * 変更時は受信データが壊れるので要注意
          *
          * @param bufferSize the size in bytes
          */
@@ -174,10 +187,7 @@ namespace Aid.UsbSerial
             {
                 return;
             }
-            lock (InternalReadBufferLock)
-            {
-                InternalReadBuffer = new byte[bufferSize];
-            }
+            InternalReadBuffer = new byte[bufferSize];
         }
 
         /**
@@ -274,12 +284,12 @@ namespace Aid.UsbSerial
         }
 
 #if UseSmartThreadPool
-        private object DoTasks()
+        object DoTasks()
 #else
         /*
          * MainReadBuffer は TempReadBuffer より大きいこと
          */
-        private WaitCallback DoTasks()
+        WaitCallback DoTasks()
 #endif
         {
             int doTaskRxLen;
