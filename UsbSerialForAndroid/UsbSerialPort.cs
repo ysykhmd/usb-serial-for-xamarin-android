@@ -82,7 +82,8 @@ namespace Aid.UsbSerial
         //   0 だと 0x00-0xff/57600bps/innerBuffer 16384byte でデータ受信のイベント発生の間隔が３秒近く、115200 bps だと 1.5秒程度開くことがある
         // Nexus5(Android 5.1.1/LMY48B)+CP2102 の組み合わせで
         //   ・DEFAULT_TEMP_READ_BUFFER_SIZE = 4 * 1024 だと、19200bps では 300 を指定すると受信できない(9600bps では受信できた)
-        public const int DEFAULT_READ_TIMEOUT_MILLISEC = 0;
+        // (const を使うと CdcAcmSerailPort.cs の ReadInternal() 内で warning が消せないので、ここだけ readonly を使っている)
+        public readonly int DEFAULT_READ_TIMEOUT_MILLISEC = 0;
 
         public event EventHandler<DataReceivedEventArgs> DataReceivedEventLinser;
 
