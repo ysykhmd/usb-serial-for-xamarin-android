@@ -42,11 +42,11 @@ namespace Aid.UsbSerial
      */
     public class UsbSerialDeviceManager
     {
-        private Context Context { get; }
-        private bool IsWorking { get; set; }
-        private UsbManager UsbManager { get; }
-        private UsbSerialDeviceBroadcastReceiver Receiver { get; }
-        private string ActionUsbPermission { get; }
+        Context Context { get; }
+        bool IsWorking { get; set; }
+        UsbManager UsbManager { get; }
+        UsbSerialDeviceBroadcastReceiver Receiver { get; }
+        string ActionUsbPermission { get; }
         public bool AllowAnonymousCdcAcmDevices { get; }
 #if UseSmartThreadPool
         public SmartThreadPool ThreadPool { get; private set; }
@@ -56,7 +56,7 @@ namespace Aid.UsbSerial
         public event EventHandler<UsbSerialDeviceEventArgs> DeviceDetached;
 
         public Dictionary<UsbSerialDeviceID, UsbSerialDeviceInfo> AvailableDeviceInfo { get; }
-        private readonly object _attachedDevicesSyncRoot = new object();
+        readonly object _attachedDevicesSyncRoot = new object();
         public List<UsbSerialDevice> AttachedDevices { get; }
 
 #if UseSmartThreadPool
@@ -241,7 +241,7 @@ namespace Aid.UsbSerial
             }
         }
 
-        private UsbSerialDevice GetDevice(UsbManager usbManager, UsbDevice usbDevice, bool allowAnonymousCdcAcmDevices)
+        UsbSerialDevice GetDevice(UsbManager usbManager, UsbDevice usbDevice, bool allowAnonymousCdcAcmDevices)
         {
             var id = new UsbSerialDeviceID(usbDevice.VendorId, usbDevice.ProductId);
             var info = FindDeviceInfo(id, usbDevice.DeviceClass, allowAnonymousCdcAcmDevices);
@@ -257,7 +257,7 @@ namespace Aid.UsbSerial
             return null;
         }
 
-        private UsbSerialDeviceInfo FindDeviceInfo(UsbSerialDeviceID id, UsbClass usbClass, bool allowAnonymousCdcAcmDevices)
+        UsbSerialDeviceInfo FindDeviceInfo(UsbSerialDeviceID id, UsbClass usbClass, bool allowAnonymousCdcAcmDevices)
         {
             if (AvailableDeviceInfo.ContainsKey(id))
             {
@@ -271,13 +271,13 @@ namespace Aid.UsbSerial
             return null;
         }
 
-        private class UsbSerialDeviceBroadcastReceiver : BroadcastReceiver
+        class UsbSerialDeviceBroadcastReceiver : BroadcastReceiver
         {
-            private UsbManager UsbManager { get; }
+            UsbManager UsbManager { get; }
 
-            private UsbSerialDeviceManager DeviceManager { get; }
+            UsbSerialDeviceManager DeviceManager { get; }
 
-            private string ActionUsbPermission { get; }
+            string ActionUsbPermission { get; }
 
             public UsbSerialDeviceBroadcastReceiver(UsbSerialDeviceManager manager, UsbManager usbManager, string actionUsbPermission)
             {

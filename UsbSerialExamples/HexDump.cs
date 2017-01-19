@@ -32,7 +32,7 @@ namespace UsbSerialExamples
      */
     public class HexDump
     {
-        private static char[] HEX_DIGITS = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+        static char[] HEX_DIGITS = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
         public static string DumpHexString(byte[] array)
         {
@@ -169,7 +169,7 @@ namespace UsbSerialExamples
             return array;
         }
 
-        private static int ToByte(char c)
+        static int ToByte(char c)
         {
             if (c >= '0' && c <= '9')
                 return (c - '0');

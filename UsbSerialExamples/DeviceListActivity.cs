@@ -50,16 +50,16 @@ namespace UsbSerialExamples
     [MetaData(UsbManager.ActionUsbDeviceAttached, Resource = "@xml/device_filter")]
     public class DeviceListActivity : Activity
     {
-        private class DeviceListItemHolder : Java.Lang.Object
+        class DeviceListItemHolder : Java.Lang.Object
         {
             public TextView deviceInfo { get; set; }
             public TextView productName { get; set; }
         }
 
 
-        private class MyArrayAdapter : ArrayAdapter<UsbSerialPort>
+        class MyArrayAdapter : ArrayAdapter<UsbSerialPort>
         {
-            private DeviceListActivity DeviceListActivity { get; set; }
+            DeviceListActivity DeviceListActivity { get; set; }
 
             public MyArrayAdapter(DeviceListActivity activity, int textViewResourceId, List<UsbSerialPort> objects)
                 : base(activity, textViewResourceId, objects)
@@ -113,14 +113,14 @@ namespace UsbSerialExamples
             }
         }
 
-        private const string TAG = "DeviceListActivity";
+        const string TAG = "DeviceListActivity";
 
-        private ListView DeviceListListView;
+        ListView DeviceListListView;
 
 
-        private ArrayAdapter<UsbSerialPort> Adapter;
-        private List<UsbSerialPort> UsbSerialPortList;
-        private UsbSerialDeviceManager UsbSerialDeviceManager;
+        ArrayAdapter<UsbSerialPort> Adapter;
+        List<UsbSerialPort> UsbSerialPortList;
+        UsbSerialDeviceManager UsbSerialDeviceManager;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -168,7 +168,7 @@ namespace UsbSerialExamples
             Adapter.NotifyDataSetChanged();
         }
 
-        private void ShowConsoleActivity(UsbSerialPort port)
+        void ShowConsoleActivity(UsbSerialPort port)
         {
             SerialConsoleActivity.Show(this, port);
         }
