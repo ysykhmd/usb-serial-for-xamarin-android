@@ -199,46 +199,45 @@ namespace Aid.UsbSerial
             return numberOfBytesRead;
         }
 
-        // CDC で送信をテストする環境がないので、触らない
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int writeSrcBufferOffset;
+        int writeLength;
+        int amtWritten;
+        byte[] writeBuffer;
         public override int Write(byte[] src, int timeoutMillis)
         {
-            // TODO(mikey): Nearly identical to FtdiSerial write. Refactor.
-            int offset = 0;
+            writeSrcBufferOffset = 0;
 
-            while (offset < src.Length)
+            while (writeSrcBufferOffset < src.Length)
             {
-                int writeLength;
-                int amtWritten;
-
                 lock (MainWriteBufferLock)
                 {
-                    byte[] writeBuffer;
-
-                    writeLength = Math.Min(src.Length - offset, MainWriteBuffer.Length);
-                    if (offset == 0)
+                    writeLength = Math.Min(src.Length - writeSrcBufferOffset, MainWriteBuffer.Length);
+                    if (writeSrcBufferOffset == 0)
                     {
                         writeBuffer = src;
                     }
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, offset, MainWriteBuffer, 0, writeLength);
+                        Array.Copy(src, writeSrcBufferOffset, MainWriteBuffer, 0, writeLength);
                         writeBuffer = MainWriteBuffer;
                     }
 
                     amtWritten = Connection.BulkTransfer(WriteEndpoint, writeBuffer, writeLength,
                             timeoutMillis);
                 }
+
                 if (amtWritten <= 0)
                 {
                     throw new IOException("Error writing " + writeLength
-                            + " bytes at offset " + offset + " length=" + src.Length);
+                            + " bytes at offset " + writeSrcBufferOffset + " length=" + src.Length);
                 }
 
                 //Log.Debug(Tag, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
-                offset += amtWritten;
+                writeSrcBufferOffset += amtWritten;
             }
-            return offset;
+            return writeSrcBufferOffset;
         }
 
         protected override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)

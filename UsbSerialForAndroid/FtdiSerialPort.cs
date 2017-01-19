@@ -323,19 +323,17 @@ namespace Aid.UsbSerial
 
         // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
         int writeSrcBufferOffset;
+        int writeLength;
+        int amtWritten;
+        byte[] writeBuffer;
         public override int Write(byte[] src, int timeoutMillis)
         {
             writeSrcBufferOffset = 0;
 
             while (writeSrcBufferOffset < src.Length)
             {
-                int writeLength;
-                int amtWritten;
-
                 lock (MainWriteBufferLock)
                 {
-                    byte[] writeBuffer;
-
                     writeLength = Math.Min(src.Length - writeSrcBufferOffset, MainWriteBuffer.Length);
                     if (writeSrcBufferOffset == 0)
                     {

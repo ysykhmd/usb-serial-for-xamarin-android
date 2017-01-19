@@ -174,41 +174,44 @@ namespace Aid.UsbSerial
         }
 
         // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
-        int mainWriteBufferOffsetPointer;
+        int writeSrcBufferOffset;
         int writeLength;
         int amtWritten;
         byte[] writeBuffer;
         public override int Write(byte[] src, int timeoutMillis)
         {
-            mainWriteBufferOffsetPointer = 0;
+            writeSrcBufferOffset = 0;
 
-            lock (MainWriteBufferLock)
+            while (writeSrcBufferOffset < src.Length)
             {
-                while (mainWriteBufferOffsetPointer < src.Length)
+                lock (MainWriteBufferLock)
                 {
-                    writeLength = Math.Min(src.Length - mainWriteBufferOffsetPointer, MainWriteBuffer.Length);
-                    if (mainWriteBufferOffsetPointer == 0)
+                    writeLength = Math.Min(src.Length - writeSrcBufferOffset, MainWriteBuffer.Length);
+                    if (writeSrcBufferOffset == 0)
                     {
                         writeBuffer = src;
                     }
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, mainWriteBufferOffsetPointer, MainWriteBuffer, 0, writeLength);
+                        Array.Copy(src, writeSrcBufferOffset, MainWriteBuffer, 0, writeLength);
                         writeBuffer = MainWriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(WriteEndpoint, writeBuffer, writeLength, timeoutMillis);
-                    if (amtWritten <= 0)
-                    {
-                        throw new IOException("Error writing " + writeLength
-                                + " bytes at offset " + mainWriteBufferOffsetPointer + " length=" + src.Length);
-                    }
-//                    Log.Debug(TAG, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
-                    mainWriteBufferOffsetPointer += amtWritten;
+                    amtWritten = Connection.BulkTransfer(WriteEndpoint,
+                            writeBuffer, writeLength, timeoutMillis);
                 }
+
+                if (amtWritten <= 0)
+                {
+                    throw new IOException("Error writing " + writeLength
+                            + " bytes at offset " + writeSrcBufferOffset + " length=" + src.Length);
+                }
+
+                //Log.Debug(TAG, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
+                writeSrcBufferOffset += amtWritten;
             }
-            return mainWriteBufferOffsetPointer;
+            return writeSrcBufferOffset;
         }
 
         void setBaudRate(int baudRate)
