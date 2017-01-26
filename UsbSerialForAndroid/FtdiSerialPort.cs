@@ -93,7 +93,7 @@ namespace Aid.UsbSerial
         /**
          * FTDI chip types.
          */
-        enum DeviceType
+        private enum DeviceType
 		{
 			TYPE_BM,
 			TYPE_AM,
@@ -123,31 +123,31 @@ namespace Aid.UsbSerial
         /**
          * Reset the port.
          */
-        const int SIO_RESET_REQUEST = 0;
+        private const int SIO_RESET_REQUEST = 0;
 
         /**
          * Set the modem control register.
          */
-        const int SIO_MODEM_CTRL_REQUEST = 1;
+        private const int SIO_MODEM_CTRL_REQUEST = 1;
 
         /**
          * Set flow control register.
          */
-        const int SIO_SET_FLOW_CTRL_REQUEST = 2;
+        private const int SIO_SET_FLOW_CTRL_REQUEST = 2;
 
         /**
          * Set baud rate.
          */
-        const int SIO_SET_BAUD_RATE_REQUEST = 3;
+        private const int SIO_SET_BAUD_RATE_REQUEST = 3;
 
         /**
          * Set the data characteristics of the port.
          */
-        const int SIO_SET_DATA_REQUEST = 4;
+        private const int SIO_SET_DATA_REQUEST = 4;
 
-        const int SIO_RESET_SIO = 0;
-        const int SIO_RESET_PURGE_RX = 1;
-        const int SIO_RESET_PURGE_TX = 2;
+        private const int SIO_RESET_SIO = 0;
+        private const int SIO_RESET_PURGE_RX = 1;
+        private const int SIO_RESET_PURGE_TX = 2;
 
         public const int FtdiDEVICE_OUT_REQTYPE =
                 UsbConstants.UsbTypeVendor | USB_RECIP_DEVICE | USB_ENDPOINT_OUT;
@@ -158,18 +158,18 @@ namespace Aid.UsbSerial
         /**
          * Length of the modem status header, transmitted with every read.
          */
-        const int MODEM_STATUS_HEADER_LENGTH = 2;
+        private const int MODEM_STATUS_HEADER_LENGTH = 2;
 
-        const string TAG = "FtdiSerialPort";
+        private const string TAG = "FtdiSerialPort";
 
-        DeviceType CurrentDeviceType;
+        private DeviceType CurrentDeviceType;
 
         /**
          * Due to http://b.android.com/28023 , we cannot use UsbRequest async reads
          * since it gives no indication of number of bytes read. Set this to
          * {@code true} on platforms where it is fixed.
          */
-        static bool ENABLE_ASYNC_READS = false;
+        private static bool ENABLE_ASYNC_READS = false;
 
         UsbEndpoint readEndpoint;
         UsbEndpoint writeEndpoint;
@@ -362,7 +362,7 @@ namespace Aid.UsbSerial
             return writeSrcBufferOffset;
         }
 
-        int SetBaudRate(int baudRate)
+        private int SetBaudRate(int baudRate)
         {
             long[] vals = ConvertBaudrate(baudRate);
             long actualBaudrate = vals[0];
@@ -425,7 +425,7 @@ namespace Aid.UsbSerial
             }
         }
 
-        long[] ConvertBaudrate(int baudrate)
+        private long[] ConvertBaudrate(int baudrate)
         {
             // TODO(mikey): Braindead transcription of libfti method.  Clean up,
             // using more idiomatic Java where possible.

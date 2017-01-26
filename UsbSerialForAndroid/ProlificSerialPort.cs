@@ -104,7 +104,7 @@ namespace Aid.UsbSerial
         {
         }
 
-        byte[] InControlTransfer(int requestType, int request,
+        private byte[] InControlTransfer(int requestType, int request,
                 int value, int index, int length)
         {
             byte[] buffer = new byte[length];
@@ -116,7 +116,7 @@ namespace Aid.UsbSerial
             return buffer;
         }
 
-        void OutControlTransfer(int requestType, int request,
+        private void OutControlTransfer(int requestType, int request,
                 int value, int index, byte[] data)
         {
             int length = (data == null) ? 0 : data.Length;
@@ -127,27 +127,27 @@ namespace Aid.UsbSerial
             }
         }
 
-        byte[] VendorIn(int value, int index, int length)
+        private byte[] VendorIn(int value, int index, int length)
         {
             return InControlTransfer(VENDOR_READ_REQUEST_TYPE, VENDOR_READ_REQUEST, value, index, length);
         }
 
-        void VendorOut(int value, int index, byte[] data)
+        private void VendorOut(int value, int index, byte[] data)
         {
             OutControlTransfer(VENDOR_WRITE_REQUEST_TYPE, VENDOR_WRITE_REQUEST, value, index, data);
         }
 
-        void ResetDevice()
+        private void ResetDevice()
         {
             PurgeHwBuffers(true, true);
         }
 
-        void CtrlOut(int request, int value, int index, byte[] data)
+        private void CtrlOut(int request, int value, int index, byte[] data)
         {
             OutControlTransfer(ProlificCTRL_OUT_REQTYPE, request, value, index, data);
         }
 
-        void DoBlackMagic()
+        private void DoBlackMagic()
         {
             VendorIn(0x8484, 0, 1);
             VendorOut(0x0404, 0, null);
@@ -162,14 +162,14 @@ namespace Aid.UsbSerial
             VendorOut(2, (DeviceType == DEVICE_TYPE_HX) ? 0x44 : 0x24, null);
         }
 
-        void SetControlLines(int newControlLinesValue)
+        private void SetControlLines(int newControlLinesValue)
         {
             CtrlOut(SET_CONTROL_REQUEST, newControlLinesValue, 0, null);
             ControlLinesValue = newControlLinesValue;
         }
 
 
-        object ReadStatusThreadFunction()
+        private object ReadStatusThreadFunction()
         {
             byte[] readStatusBuffer = new byte[STATUS_BUFFER_SIZE];
             int ReadStatusBytesCount;
@@ -198,7 +198,7 @@ namespace Aid.UsbSerial
             return null;
         }
 
-        int Status
+        private int Status
         {
             get
             {
@@ -214,7 +214,7 @@ namespace Aid.UsbSerial
             }
         }
 
-        bool TestStatusFlag(int flag)
+        private bool TestStatusFlag(int flag)
         {
             return ((Status & flag) == flag);
         }

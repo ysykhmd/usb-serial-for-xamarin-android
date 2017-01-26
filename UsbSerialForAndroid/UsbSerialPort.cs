@@ -36,7 +36,7 @@ namespace Aid.UsbSerial
 {
     public abstract class UsbSerialPort
     {
-        const string TAG = "UsbSerailPort";
+        private const string TAG = "UsbSerailPort";
 
         /**
          * InternalReadBuffer[] ‚É‚Â‚¢‚Ä
@@ -106,9 +106,9 @@ namespace Aid.UsbSerial
         /** Internal write buffer.  Guarded by {@link #MainWriteBufferLock}. */
         protected byte[] MainWriteBuffer;
 
-        int dataBits;
+        private int dataBits;
 
-        volatile bool _ContinueUpdating;
+        private volatile bool _ContinueUpdating;
         public bool IsOpened { get; protected set; }
         public int Baudrate { get; set; }
         public int DataBits
@@ -285,12 +285,12 @@ namespace Aid.UsbSerial
         }
 
 #if UseSmartThreadPool
-        object DoTasks()
+        private object DoTasks()
 #else
         /*
          * MainReadBuffer ‚Í TempReadBuffer ‚æ‚è‘å‚«‚¢‚±‚Æ
          */
-        WaitCallback DoTasks()
+        private WaitCallback DoTasks()
 #endif
         {
             int doTaskRxLen;

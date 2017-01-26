@@ -347,7 +347,7 @@ namespace Aid.UsbSerial
             }
         }
 
-        void SetDtrRts()
+        private void SetDtrRts()
         {
             int value = (CurrentRts ? 0x2 : 0) | (CurrentDtr ? 0x1 : 0);
             sendAcmControlMessage(SET_CONTROL_LINE_STATE, value, null);
