@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+  <item
+     android:id="@+id/menu_test_mode"
+     android:showAsAction="never"
+     android:title="@string/test_mode_menu_title">
+    <menu>
+      <item
+        android:id="@+id/test_mode_nmew_check_sum"
+        android:showAsAction="never"
+        android:title="@string/test_mode_nmew_check_sum"/>
+      <item
+        android:id="@+id/test_mode_cyclic_0x00_to_0xff"
+        android:showAsAction="never"
+        android:title="@string/test_mode_cyclic_0x00_to_0xff"/>
+      <item
+        android:id="@+id/test_mode_cyclic_0x41_to_0x5A"
+        android:showAsAction="never"
+        android:title="@string/test_mode_cyclic_0x41_to_0x5A"/>
+      <item
+        android:id="@+id/test_mode_send_data"
+        android:showAsAction="never"
+        android:title="@string/test_mode_send_data"/>
+      <item
+        android:id="@+id/test_mode_send_data_cdc"
+        android:showAsAction="never"
+        android:title="@string/test_mode_send_data_cdc"/>
+    </menu>
+  </item>
+  <item
+       android:id="@+id/menu_transfer_rate"
+       android:showAsAction="never"
+       android:title="@string/transfer_rate_menu_title">
+    <menu>
+      <item
+        android:id="@+id/transfer_rate_1200"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_1200" />
+      <item
+        android:id="@+id/transfer_rate_2400"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_2400" />
+      <item
+        android:id="@+id/transfer_rate_4800"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_4800" />
+      <item
+        android:id="@+id/transfer_rate_9600"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_9600" />
+      <item
+        android:id="@+id/transfer_rate_19200"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_19200" />
+      <item
+        android:id="@+id/transfer_rate_38400"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_38400" />
+      <item
+        android:id="@+id/transfer_rate_57600"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_57600" />
+      <item
+        android:id="@+id/transfer_rate_115200"
+        android:showAsAction="never"
+        android:title="@string/transfer_rate_115200" />
+    </menu>
+  </item>
+  <item
+       android:id="@+id/menu_test_period"
+       android:showAsAction="never"
+       android:title="@string/test_period_title">
+    <menu>
+      <item
+        android:id="@+id/test_period_10sec"
+        android:showAsAction="never"
+        android:title="@string/test_period_10sec" />
+      <item
+        android:id="@+id/test_period_30sec"
+        android:showAsAction="never"
+        android:title="@string/test_period_30sec" />
+      <item
+        android:id="@+id/test_period_1min"
+        android:showAsAction="never"
+        android:title="@string/test_period_1min" />
+      <item
+        android:id="@+id/test_period_3min"
+        android:showAsAction="never"
+        android:title="@string/test_period_3min" />
+      <item
+        android:id="@+id/test_period_5min"
+        android:showAsAction="never"
+        android:title="@string/test_period_5min" />
+      <item
+        android:id="@+id/test_period_10min"
+        android:showAsAction="never"
+        android:title="@string/test_period_10min" />
+      <item
+        android:id="@+id/test_period_30min"
+        android:showAsAction="never"
+        android:title="@string/test_period_30min" />
+    </menu>
+  </item>
+</menu>

@@ -24,11 +24,9 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 
 using Android.Hardware.Usb;
-using Android.OS;
 using Android.Util;
 
 using Java.Nio;
@@ -47,31 +45,30 @@ namespace Aid.UsbSerial
     {
         private const string Tag = "CdcAcmSerialPort";
 
-        private static int USB_RECIP_INTERFACE = 0x01;
-        private static int USB_RT_ACM = UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
-        UsbAddressing a = UsbAddressing.DirMask;
-        private static int SET_LINE_CODING = 0x20;  // USB CDC 1.1 section 6.2
-        private static int GET_LINE_CODING = 0x21;
-        private static int SET_CONTROL_LINE_STATE = 0x22;
-        private static int SEND_BREAK = 0x23;
+        private const int USB_RECIP_INTERFACE = 0x01;
+        private const int USB_RT_ACM = UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
+        private const int SET_LINE_CODING = 0x20;  // USB CDC 1.1 section 6.2
+        private const int GET_LINE_CODING = 0x21;
+        private const int SET_CONTROL_LINE_STATE = 0x22;
+        private const int SEND_BREAK = 0x23;
 
-        private bool mEnableAsyncReads;
-        private UsbInterface mControlInterface;
-        private UsbInterface mDataInterface;
+        private bool EnableAsyncReads;
+        private UsbInterface ControlInterface;
+        private UsbInterface DataInterface;
 
-        private UsbEndpoint mControlEndpoint;
-        private UsbEndpoint mReadEndpoint;
-        private UsbEndpoint mWriteEndpoint;
+        private UsbEndpoint ControlEndpoint;
+        private UsbEndpoint ReadEndpoint;
+        private UsbEndpoint WriteEndpoint;
 
-        private bool mRts = false;
-        private bool mDtr = false;
+        private bool CurrentRts = false;
+        private bool CurrentDtr = false;
 
 		public CdcAcmSerialPort(UsbManager usbManager, UsbDevice usbDevice, int portNumber)
             : base(usbManager, usbDevice, portNumber)
         {
             // Disabled because it is not work well under SmartThreadPool.
-            //mEnableAsyncReads = (Build.VERSION.SdkInt >= BuildVersionCodes.JellyBeanMr1);
-            mEnableAsyncReads = false;
+            //EnableAsyncReads = (Build.VERSION.SdkInt >= BuildVersionCodes.JellyBeanMr1);
+            EnableAsyncReads = false;
         }
 
         public override void Open()
@@ -86,31 +83,31 @@ namespace Aid.UsbSerial
 				CreateConnection();
 
                 Log.Debug(Tag, "claiming interfaces, count=" + UsbDevice.InterfaceCount);
-                mControlInterface = UsbDevice.GetInterface(0);
-                Log.Debug(Tag, "Control iface=" + mControlInterface);
+                ControlInterface = UsbDevice.GetInterface(0);
+                Log.Debug(Tag, "Control iface=" + ControlInterface);
                 // class should be USB_CLASS_COMM
 
-                if (!Connection.ClaimInterface(mControlInterface, true))
+                if (!Connection.ClaimInterface(ControlInterface, true))
                 {
                     throw new IOException("Could not claim control interface.");
                 }
-                mControlEndpoint = mControlInterface.GetEndpoint(0);
-                Log.Debug(Tag, "Control endpoint direction: " + mControlEndpoint.Direction);
+                ControlEndpoint = ControlInterface.GetEndpoint(0);
+                Log.Debug(Tag, "Control endpoint direction: " + ControlEndpoint.Direction);
 
                 Log.Debug(Tag, "Claiming data interface.");
-                mDataInterface = UsbDevice.GetInterface(1);
-                Log.Debug(Tag, "data iface=" + mDataInterface);
+                DataInterface = UsbDevice.GetInterface(1);
+                Log.Debug(Tag, "data iface=" + DataInterface);
                 // class should be USB_CLASS_CDC_DATA
 
-                if (!Connection.ClaimInterface(mDataInterface, true))
+                if (!Connection.ClaimInterface(DataInterface, true))
                 {
                     throw new IOException("Could not claim data interface.");
                 }
-                mReadEndpoint = mDataInterface.GetEndpoint(1);
-                Log.Debug(Tag, "Read endpoint direction: " + mReadEndpoint.Direction);
-                mWriteEndpoint = mDataInterface.GetEndpoint(0);
-                Log.Debug(Tag, "Write endpoint direction: " + mWriteEndpoint.Direction);
-                if (mEnableAsyncReads)
+                ReadEndpoint = DataInterface.GetEndpoint(1);
+                Log.Debug(Tag, "Read endpoint direction: " + ReadEndpoint.Direction);
+                WriteEndpoint = DataInterface.GetEndpoint(0);
+                Log.Debug(Tag, "Write endpoint direction: " + WriteEndpoint.Direction);
+                if (EnableAsyncReads)
                 {
                     Log.Debug(Tag, "Async reads enabled");
                 }
@@ -119,6 +116,7 @@ namespace Aid.UsbSerial
                     Log.Debug(Tag, "Async reads disabled.");
                 }
 				ResetParameters();
+                Dtr = true;
 				openedSuccessfully = true;
             }
             finally {
@@ -131,28 +129,31 @@ namespace Aid.UsbSerial
 			}
         }
 
-        private int SendAcmControlMessage(int request, int value, byte[] buf)
+        int sendAcmControlMessage(int request, int value, byte[] buf)
         {
             return Connection.ControlTransfer((UsbAddressing)USB_RT_ACM, request, value, 0, buf, buf != null ? buf.Length : 0, 5000);
         }
 
         public override void Close()
         {
+            Dtr = false;
 			StopUpdating ();
 			CloseConnection ();
 			IsOpened = false;
         }
 
-        protected override int ReadInternal(byte[] dest, int timeoutMillis)
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int numberOfBytesRead;
+        protected override int ReadInternal()
         {
-            if (mEnableAsyncReads)
+            if (EnableAsyncReads)
             {
                 UsbRequest request = new UsbRequest();
                 try
                 {
-                    request.Initialize(Connection, mReadEndpoint);
-                    ByteBuffer buf = ByteBuffer.Wrap(dest);
-                    if (!request.Queue(buf, dest.Length))
+                    request.Initialize(Connection, ReadEndpoint);
+                    ByteBuffer buf = ByteBuffer.Wrap(TempReadBuffer);
+                    if (!request.Queue(buf, TempReadBuffer.Length))
                     {
                         throw new IOException("Error queueing request.");
                     }
@@ -166,7 +167,7 @@ namespace Aid.UsbSerial
                     int nread = buf.Position();
                     if (nread > 0)
                     {
-                        //Log.Debug(Tag, HexDump.DumpHexString(dest, 0, Math.Min(32, dest.Length)));
+                        //Log.Debug(Tag, HexDump.DumpHexString(TempReadBuffer, 0, Math.Min(32, TempReadBuffer.Length)));
                         return nread;
                     }
                     else
@@ -180,69 +181,63 @@ namespace Aid.UsbSerial
                 }
             }
 
-            int numBytesRead;
-            lock (mInternalReadBufferLock)
+            numberOfBytesRead = Connection.BulkTransfer(ReadEndpoint, TempReadBuffer, TempReadBuffer.Length, DEFAULT_READ_TIMEOUT_MILLISEC);
+            //Log.Info(Tag, "Data Length : " + DateTime.Now.ToString("HH:mm:ss.fff") + ":" + numberOfBytesRead.ToString() + "\n");
+            if (numberOfBytesRead < 0)
             {
-                int readAmt = Math.Min(dest.Length, mInternalReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(mReadEndpoint, mInternalReadBuffer, readAmt,
-                        timeoutMillis);
-                if (numBytesRead < 0)
+                // This sucks: we get -1 on timeout, not 0 as preferred.
+                // We *should* use UsbRequest, except it has a bug/api oversight
+                // where there is no way to determine the number of bytes read
+                // in response :\ -- http://b.android.com/28023
+                if (DEFAULT_READ_TIMEOUT_MILLISEC == int.MaxValue)
                 {
-                    // This sucks: we get -1 on timeout, not 0 as preferred.
-                    // We *should* use UsbRequest, except it has a bug/api oversight
-                    // where there is no way to determine the number of bytes read
-                    // in response :\ -- http://b.android.com/28023
-                    if (timeoutMillis == int.MaxValue)
-                    {
-                        // Hack: Special case "~infinite timeout" as an error.
-                        return -1;
-                    }
-                    return 0;
+                    // Hack: Special case "~infinite timeout" as an error.
+                    return -1;
                 }
-                Array.Copy(mInternalReadBuffer, 0, dest, 0, numBytesRead);
+                return 0;
             }
-            return numBytesRead;
+            return numberOfBytesRead;
         }
 
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int writeSrcBufferOffset;
+        int writeLength;
+        int amtWritten;
+        byte[] writeBuffer;
         public override int Write(byte[] src, int timeoutMillis)
         {
-            // TODO(mikey): Nearly identical to FtdiSerial write. Refactor.
-            int offset = 0;
+            writeSrcBufferOffset = 0;
 
-            while (offset < src.Length)
+            while (writeSrcBufferOffset < src.Length)
             {
-                int writeLength;
-                int amtWritten;
-
-                lock (mWriteBufferLock)
+                lock (MainWriteBufferLock)
                 {
-                    byte[] writeBuffer;
-
-                    writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
-                    if (offset == 0)
+                    writeLength = Math.Min(src.Length - writeSrcBufferOffset, MainWriteBuffer.Length);
+                    if (writeSrcBufferOffset == 0)
                     {
                         writeBuffer = src;
                     }
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, offset, mWriteBuffer, 0, writeLength);
-                        writeBuffer = mWriteBuffer;
+                        Array.Copy(src, writeSrcBufferOffset, MainWriteBuffer, 0, writeLength);
+                        writeBuffer = MainWriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(mWriteEndpoint, writeBuffer, writeLength,
+                    amtWritten = Connection.BulkTransfer(WriteEndpoint, writeBuffer, writeLength,
                             timeoutMillis);
                 }
+
                 if (amtWritten <= 0)
                 {
                     throw new IOException("Error writing " + writeLength
-                            + " bytes at offset " + offset + " length=" + src.Length);
+                            + " bytes at offset " + writeSrcBufferOffset + " length=" + src.Length);
                 }
 
-                Log.Debug(Tag, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
-                offset += amtWritten;
+                //Log.Debug(Tag, "Wrote amt=" + amtWritten + " attempted=" + writeLength);
+                writeSrcBufferOffset += amtWritten;
             }
-            return offset;
+            return writeSrcBufferOffset;
         }
 
         protected override void SetParameters(int baudRate, int dataBits, StopBits stopBits, Parity parity)
@@ -291,7 +286,7 @@ namespace Aid.UsbSerial
                 stopBitsByte,
                 parityBitesByte,
                 (byte) dataBits};
-            SendAcmControlMessage(SET_LINE_CODING, 0, msg);
+            sendAcmControlMessage(SET_LINE_CODING, 0, msg);
         }
 
         public override bool CD
@@ -322,11 +317,11 @@ namespace Aid.UsbSerial
         {
             get
             {
-                return mDtr;
+                return CurrentDtr;
             }
             set
             {
-                mDtr = value;
+                CurrentDtr = value;
                 SetDtrRts();
             }
         }
@@ -343,19 +338,19 @@ namespace Aid.UsbSerial
         {
             get
             {
-                return mRts;
+                return CurrentRts;
             }
             set
             {
-                mRts = value;
+                CurrentRts = value;
                 SetDtrRts();
             }
         }
 
         private void SetDtrRts()
         {
-            int value = (mRts ? 0x2 : 0) | (mDtr ? 0x1 : 0);
-            SendAcmControlMessage(SET_CONTROL_LINE_STATE, value, null);
+            int value = (CurrentRts ? 0x2 : 0) | (CurrentDtr ? 0x1 : 0);
+            sendAcmControlMessage(SET_CONTROL_LINE_STATE, value, null);
         }
     }
 }

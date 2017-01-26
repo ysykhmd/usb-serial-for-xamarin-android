@@ -24,11 +24,9 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 
 using Android.Hardware.Usb;
-using Android.OS;
 using Android.Util;
 
 using Java.Nio;
@@ -92,10 +90,10 @@ namespace Aid.UsbSerial
      */
 	public class FtdiSerialPort : UsbSerialPort
     {
-		/**
+        /**
          * FTDI chip types.
          */
-		private enum DeviceType
+        private enum DeviceType
 		{
 			TYPE_BM,
 			TYPE_AM,
@@ -105,70 +103,66 @@ namespace Aid.UsbSerial
 			TYPE_4232H
 		}
 
-        public static int USB_TYPE_STANDARD = 0x00 << 5;
-        public static int USB_TYPE_CLASS = 0x00 << 5;
-        public static int USB_TYPE_VENDOR = 0x00 << 5;
-        public static int USB_TYPE_RESERVED = 0x00 << 5;
+        public const int USB_TYPE_STANDARD = 0x00 << 5;
+        public const int USB_TYPE_CLASS = 0x00 << 5;
+        public const int USB_TYPE_VENDOR = 0x00 << 5;
+        public const int USB_TYPE_RESERVED = 0x00 << 5;
 
-        public static int USB_RECIP_DEVICE = 0x00;
-        public static int USB_RECIP_INTERFACE = 0x01;
-        public static int USB_RECIP_ENDPOINT = 0x02;
-        public static int USB_RECIP_OTHER = 0x03;
+        public const int USB_RECIP_DEVICE = 0x00;
+        public const int USB_RECIP_INTERFACE = 0x01;
+        public const int USB_RECIP_ENDPOINT = 0x02;
+        public const int USB_RECIP_OTHER = 0x03;
 
-        public static int USB_ENDPOINT_IN = 0x80;
-        public static int USB_ENDPOINT_OUT = 0x00;
+        public const int USB_ENDPOINT_IN = 0x80;
+        public const int USB_ENDPOINT_OUT = 0x00;
 
-        public static int USB_WRITE_TIMEOUT_MILLIS = 5000;
-        public static int USB_READ_TIMEOUT_MILLIS = 5000;
+        public const int USB_WRITE_TIMEOUT_MILLIS = 5000;
+        public const int USB_READ_TIMEOUT_MILLIS = 5000;
 
         // From ftdi.h
         /**
          * Reset the port.
          */
-        private static int SIO_RESET_REQUEST = 0;
+        private const int SIO_RESET_REQUEST = 0;
 
         /**
          * Set the modem control register.
          */
-        private static int SIO_MODEM_CTRL_REQUEST = 1;
+        private const int SIO_MODEM_CTRL_REQUEST = 1;
 
         /**
          * Set flow control register.
          */
-        private static int SIO_SET_FLOW_CTRL_REQUEST = 2;
+        private const int SIO_SET_FLOW_CTRL_REQUEST = 2;
 
         /**
          * Set baud rate.
          */
-        private static int SIO_SET_BAUD_RATE_REQUEST = 3;
+        private const int SIO_SET_BAUD_RATE_REQUEST = 3;
 
         /**
          * Set the data characteristics of the port.
          */
-        private static int SIO_SET_DATA_REQUEST = 4;
+        private const int SIO_SET_DATA_REQUEST = 4;
 
-        private static int SIO_RESET_SIO = 0;
-        private static int SIO_RESET_PURGE_RX = 1;
-        private static int SIO_RESET_PURGE_TX = 2;
+        private const int SIO_RESET_SIO = 0;
+        private const int SIO_RESET_PURGE_RX = 1;
+        private const int SIO_RESET_PURGE_TX = 2;
 
-        public static int FtdiDEVICE_OUT_REQTYPE =
+        public const int FtdiDEVICE_OUT_REQTYPE =
                 UsbConstants.UsbTypeVendor | USB_RECIP_DEVICE | USB_ENDPOINT_OUT;
 
-        public static int FtdiDEVICE_IN_REQTYPE =
+        public const int FtdiDEVICE_IN_REQTYPE =
                 UsbConstants.UsbTypeVendor | USB_RECIP_DEVICE | USB_ENDPOINT_IN;
 
         /**
          * Length of the modem status header, transmitted with every read.
          */
-        private static int MODEM_STATUS_HEADER_LENGTH = 2;
+        private const int MODEM_STATUS_HEADER_LENGTH = 2;
 
-        private string TAG = "FtdiSerialPort";
+        private const string TAG = "FtdiSerialPort";
 
-        private DeviceType mType;
-
-        private int mInterface = 0; /* INTERFACE_ANY */
-
-        private int mMaxPacketSize = 64; // TODO(mikey): detect
+        private DeviceType CurrentDeviceType;
 
         /**
          * Due to http://b.android.com/28023 , we cannot use UsbRequest async reads
@@ -177,38 +171,17 @@ namespace Aid.UsbSerial
          */
         private static bool ENABLE_ASYNC_READS = false;
 
+        private UsbEndpoint readEndpoint;
+        private UsbEndpoint writeEndpoint;
+
+
         public FtdiSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)
         {
-        }
+            readEndpoint = UsbDevice.GetInterface(0).GetEndpoint(0);
+            writeEndpoint = UsbDevice.GetInterface(0).GetEndpoint(1);
+            maxPacketSize = readEndpoint.MaxPacketSize;
 
-        /**
-         * Filter FTDI status bytes from buffer
-         * @param src The source buffer (which contains status bytes)
-         * @param dest The destination buffer to write the status bytes into (can be src)
-         * @param totalBytesRead Number of bytes read to src
-         * @param maxPacketSize The USB endpoint max packet size
-         * @return The number of payload bytes
-         */
-        private int FilterStatusBytes(byte[] src, byte[] dest, int totalBytesRead, int maxPacketSize)
-        {
-            int packetsCount = totalBytesRead / maxPacketSize + (totalBytesRead % maxPacketSize == 0 ? 0 : 1);
-            for (int packetIdx = 0; packetIdx < packetsCount; ++packetIdx)
-            {
-                int count = (packetIdx == (packetsCount - 1))
-                        ? (totalBytesRead % maxPacketSize) - MODEM_STATUS_HEADER_LENGTH
-                        : maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
-                if (count > 0)
-                {
-                    Array.Copy(src,
-                            packetIdx * maxPacketSize + MODEM_STATUS_HEADER_LENGTH,
-                            dest,
-                            packetIdx * (maxPacketSize - MODEM_STATUS_HEADER_LENGTH),
-                            count);
-                }
-            }
-
-            return totalBytesRead - (packetsCount * 2);
         }
 
         public void Reset()
@@ -220,7 +193,7 @@ namespace Aid.UsbSerial
             }
 
             // TODO(mikey): autodetect.
-            mType = DeviceType.TYPE_R;
+            CurrentDeviceType = DeviceType.TYPE_R;
         }
 
         public override void Open()
@@ -262,23 +235,29 @@ namespace Aid.UsbSerial
 			IsOpened = false;
         }
 
-        protected override int ReadInternal(byte[] dest, int timeoutMillis)
-        {
-            UsbEndpoint endpoint = UsbDevice.GetInterface(0).GetEndpoint(0);
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int totalBytesRead;
+        int srcPtr;
+        int destPtr;
+        int validDataCount;
+        int validDataCountInPacket;
+        int rawDataCount;
+        int maxPacketSize;
 
+        protected override int ReadInternal()
+        {
             if (ENABLE_ASYNC_READS)
             {
                 int readAmt;
-                lock (mInternalReadBufferLock)
-                {
-                    // mReadBuffer is only used for maximum read size.
-                    readAmt = Math.Min(dest.Length, mInternalReadBuffer.Length);
-                }
+
+                // MainReadBuffer is only used for maximum read size.
+                readAmt = Math.Min(TempReadBuffer.Length, InternalReadBuffer.Length);
+
 
                 UsbRequest request = new UsbRequest();
-                request.Initialize(Connection, endpoint);
+                request.Initialize(Connection, readEndpoint);
 
-                ByteBuffer buf = ByteBuffer.Wrap(dest);
+                ByteBuffer buf = ByteBuffer.Wrap(TempReadBuffer);
                 if (!request.Queue(buf, readAmt))
                 {
                     throw new IOException("Error queueing request.");
@@ -293,7 +272,7 @@ namespace Aid.UsbSerial
                 int payloadBytesRead = buf.Position() - MODEM_STATUS_HEADER_LENGTH;
                 if (payloadBytesRead > 0)
                 {
-                    //Log.Debug(TAG, HexDump.DumpHexString(dest, 0, Math.Min(32, dest.Length)));
+                    //Log.Debug(TAG, HexDump.DumpHexString(TempReadBuffer, 0, Math.Min(32, TempReadBuffer.Length)));
                     return payloadBytesRead;
                 }
                 else
@@ -303,64 +282,84 @@ namespace Aid.UsbSerial
             }
             else
             {
-                int totalBytesRead;
+                // Nexus5:データが読みだされるバッファが 256 の倍数以外では 57600bps 以上で Connection.BulkTransfer() が -1 を返す。原因は不明
+                totalBytesRead = Connection.BulkTransfer(readEndpoint, InternalReadBuffer,
+                        DEFAULT_INTERNAL_READ_BUFFER_SIZE, DEFAULT_READ_TIMEOUT_MILLISEC);
 
-                lock (mInternalReadBufferLock)
+                if (totalBytesRead < MODEM_STATUS_HEADER_LENGTH)
                 {
-                    int readAmt = Math.Min(dest.Length, mInternalReadBuffer.Length);
-                    totalBytesRead = Connection.BulkTransfer(endpoint, mInternalReadBuffer,
-                            readAmt, timeoutMillis);
+                    throw new IOException("Expected at least " + MODEM_STATUS_HEADER_LENGTH + " bytes");
+                }
 
-                    if (totalBytesRead < MODEM_STATUS_HEADER_LENGTH)
+                //以下は FilterStatusBytes() として別関数だったものを組み込んだ
+                //関数呼び出しの際に引数として渡されるオブジェクトを生成しないための処置
+                srcPtr = MODEM_STATUS_HEADER_LENGTH;
+                destPtr = 0;
+                validDataCount = maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
+                rawDataCount = 0;
+
+                while (totalBytesRead > 0)
+                {
+                    if (totalBytesRead > maxPacketSize)
                     {
-                        throw new IOException("Expected at least " + MODEM_STATUS_HEADER_LENGTH + " bytes");
+                        validDataCountInPacket = validDataCount;
+                        totalBytesRead -= maxPacketSize;
+                    }
+                    else
+                    {
+                        validDataCountInPacket = totalBytesRead - MODEM_STATUS_HEADER_LENGTH;
+                        totalBytesRead = 0;
                     }
 
-                    return FilterStatusBytes(mInternalReadBuffer, dest, totalBytesRead, endpoint.MaxPacketSize);
+                    Array.Copy(InternalReadBuffer, srcPtr, TempReadBuffer, destPtr, validDataCountInPacket);
+                    srcPtr += maxPacketSize;
+                    destPtr += validDataCount;
+
+                    rawDataCount += validDataCountInPacket;
                 }
+                return rawDataCount;
             }
         }
 
+        // ガベージを増やさないために関数内で変数の宣言はせず、すべて関数外で宣言する
+        int writeSrcBufferOffset;
+        int writeLength;
+        int amtWritten;
+        byte[] writeBuffer;
         public override int Write(byte[] src, int timeoutMillis)
         {
-            UsbEndpoint endpoint = UsbDevice.GetInterface(0).GetEndpoint(1);
-            int offset = 0;
+            writeSrcBufferOffset = 0;
 
-            while (offset < src.Length)
+            while (writeSrcBufferOffset < src.Length)
             {
-                int writeLength;
-                int amtWritten;
-
-                lock (mWriteBufferLock)
+                lock (MainWriteBufferLock)
                 {
-                    byte[] writeBuffer;
-
-                    writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
-                    if (offset == 0)
+                    writeLength = Math.Min(src.Length - writeSrcBufferOffset, MainWriteBuffer.Length);
+                    if (writeSrcBufferOffset == 0)
                     {
                         writeBuffer = src;
                     }
                     else
                     {
                         // bulkTransfer does not support offsets, make a copy.
-                        Array.Copy(src, offset, mWriteBuffer, 0, writeLength);
-                        writeBuffer = mWriteBuffer;
+                        Array.Copy(src, writeSrcBufferOffset, MainWriteBuffer, 0, writeLength);
+                        writeBuffer = MainWriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(endpoint, writeBuffer, writeLength,
+                    amtWritten = Connection.BulkTransfer(writeEndpoint, writeBuffer, writeLength,
                             timeoutMillis);
                 }
 
                 if (amtWritten <= 0)
                 {
                     throw new IOException("Error writing " + writeLength
-                            + " bytes at offset " + offset + " length=" + src.Length);
+                            + " bytes at offset " + writeSrcBufferOffset + " length=" + src.Length);
                 }
 
-                Log.Debug(TAG, "Wrote amtWritten=" + amtWritten + " attempted=" + writeLength);
-                offset += amtWritten;
+                // Log.Debug(TAG, "Wrote amtWritten=" + amtWritten + " attempted=" + writeLength);
+                writeSrcBufferOffset += amtWritten;
             }
-            return offset;
+            return writeSrcBufferOffset;
         }
 
         private int SetBaudRate(int baudRate)
@@ -447,7 +446,7 @@ namespace Aid.UsbSerial
                     // Round up to minimum supported divisor
                     tryDivisor = 8;
                 }
-                else if (mType != DeviceType.TYPE_AM && tryDivisor < 12)
+                else if (CurrentDeviceType != DeviceType.TYPE_AM && tryDivisor < 12)
                 {
                     // BM doesn't support divisors 9 through 11 inclusive
                     tryDivisor = 12;
@@ -459,7 +458,7 @@ namespace Aid.UsbSerial
                 }
                 else
                 {
-                    if (mType == DeviceType.TYPE_AM)
+                    if (CurrentDeviceType == DeviceType.TYPE_AM)
                     {
                         // TODO
                     }
@@ -516,8 +515,8 @@ namespace Aid.UsbSerial
             // Split into "value" and "index" values
             long value = encodedDivisor & 0xFFFF;
             long index;
-            if (mType == DeviceType.TYPE_2232C || mType == DeviceType.TYPE_2232H
-                    || mType == DeviceType.TYPE_4232H)
+            if (CurrentDeviceType == DeviceType.TYPE_2232C || CurrentDeviceType == DeviceType.TYPE_2232H
+                    || CurrentDeviceType == DeviceType.TYPE_4232H)
             {
                 index = (encodedDivisor >> 8) & 0xffff;
                 index &= 0xFF00;

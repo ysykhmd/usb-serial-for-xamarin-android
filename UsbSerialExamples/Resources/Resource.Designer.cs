@@ -60,23 +60,158 @@ namespace UsbSerialExamples
 		public partial class Id
 		{
 			
-			// aapt resource value: 0x7f060005
-			public const int consoleText = 2131099653;
+			// aapt resource value: 0x7f07000c
+			public const int activity_status = 2131165196;
 			
-			// aapt resource value: 0x7f060004
-			public const int demoScroller = 2131099652;
+			// aapt resource value: 0x7f07001a
+			public const int consoleText = 2131165210;
 			
-			// aapt resource value: 0x7f060003
-			public const int demoTitle = 2131099651;
+			// aapt resource value: 0x7f070019
+			public const int demoScroller = 2131165209;
 			
-			// aapt resource value: 0x7f060002
-			public const int deviceList = 2131099650;
+			// aapt resource value: 0x7f070004
+			public const int deviceList = 2131165188;
 			
-			// aapt resource value: 0x7f060001
-			public const int progressBar = 2131099649;
+			// aapt resource value: 0x7f070000
+			public const int device_info = 2131165184;
 			
-			// aapt resource value: 0x7f060000
-			public const int separator = 2131099648;
+			// aapt resource value: 0x7f070013
+			public const int error_count = 2131165203;
+			
+			// aapt resource value: 0x7f070011
+			public const int good_count = 2131165201;
+			
+			// aapt resource value: 0x7f07001c
+			public const int menu_test_mode = 2131165212;
+			
+			// aapt resource value: 0x7f07002b
+			public const int menu_test_period = 2131165227;
+			
+			// aapt resource value: 0x7f070022
+			public const int menu_transfer_rate = 2131165218;
+			
+			// aapt resource value: 0x7f07001b
+			public const int modeChange = 2131165211;
+			
+			// aapt resource value: 0x7f070001
+			public const int product_name = 2131165185;
+			
+			// aapt resource value: 0x7f070003
+			public const int progressBar = 2131165187;
+			
+			// aapt resource value: 0x7f07000e
+			public const int remain_time = 2131165198;
+			
+			// aapt resource value: 0x7f070017
+			public const int resultScroller = 2131165207;
+			
+			// aapt resource value: 0x7f070018
+			public const int resultText = 2131165208;
+			
+			// aapt resource value: 0x7f070002
+			public const int separator = 2131165186;
+			
+			// aapt resource value: 0x7f070005
+			public const int separator1 = 2131165189;
+			
+			// aapt resource value: 0x7f070007
+			public const int separator2 = 2131165191;
+			
+			// aapt resource value: 0x7f07000b
+			public const int separator3 = 2131165195;
+			
+			// aapt resource value: 0x7f07000f
+			public const int separator4 = 2131165199;
+			
+			// aapt resource value: 0x7f070016
+			public const int separator5 = 2131165206;
+			
+			// aapt resource value: 0x7f070008
+			public const int serial_device_name = 2131165192;
+			
+			// aapt resource value: 0x7f070006
+			public const int test_mode = 2131165190;
+			
+			// aapt resource value: 0x7f07001e
+			public const int test_mode_cyclic_0x00_to_0xff = 2131165214;
+			
+			// aapt resource value: 0x7f07001f
+			public const int test_mode_cyclic_0x41_to_0x5A = 2131165215;
+			
+			// aapt resource value: 0x7f07001d
+			public const int test_mode_nmew_check_sum = 2131165213;
+			
+			// aapt resource value: 0x7f070020
+			public const int test_mode_send_data = 2131165216;
+			
+			// aapt resource value: 0x7f070021
+			public const int test_mode_send_data_cdc = 2131165217;
+			
+			// aapt resource value: 0x7f070031
+			public const int test_period_10min = 2131165233;
+			
+			// aapt resource value: 0x7f07002c
+			public const int test_period_10sec = 2131165228;
+			
+			// aapt resource value: 0x7f07002e
+			public const int test_period_1min = 2131165230;
+			
+			// aapt resource value: 0x7f070032
+			public const int test_period_30min = 2131165234;
+			
+			// aapt resource value: 0x7f07002d
+			public const int test_period_30sec = 2131165229;
+			
+			// aapt resource value: 0x7f07002f
+			public const int test_period_3min = 2131165231;
+			
+			// aapt resource value: 0x7f070030
+			public const int test_period_5min = 2131165232;
+			
+			// aapt resource value: 0x7f07000d
+			public const int test_time = 2131165197;
+			
+			// aapt resource value: 0x7f070012
+			public const int title_error = 2131165202;
+			
+			// aapt resource value: 0x7f070010
+			public const int title_good = 2131165200;
+			
+			// aapt resource value: 0x7f070014
+			public const int title_total = 2131165204;
+			
+			// aapt resource value: 0x7f070009
+			public const int title_transfar_rate = 2131165193;
+			
+			// aapt resource value: 0x7f070015
+			public const int total_count = 2131165205;
+			
+			// aapt resource value: 0x7f07000a
+			public const int transfar_rate_value = 2131165194;
+			
+			// aapt resource value: 0x7f07002a
+			public const int transfer_rate_115200 = 2131165226;
+			
+			// aapt resource value: 0x7f070023
+			public const int transfer_rate_1200 = 2131165219;
+			
+			// aapt resource value: 0x7f070027
+			public const int transfer_rate_19200 = 2131165223;
+			
+			// aapt resource value: 0x7f070024
+			public const int transfer_rate_2400 = 2131165220;
+			
+			// aapt resource value: 0x7f070028
+			public const int transfer_rate_38400 = 2131165224;
+			
+			// aapt resource value: 0x7f070025
+			public const int transfer_rate_4800 = 2131165221;
+			
+			// aapt resource value: 0x7f070029
+			public const int transfer_rate_57600 = 2131165225;
+			
+			// aapt resource value: 0x7f070026
+			public const int transfer_rate_9600 = 2131165222;
 			
 			static Id()
 			{
@@ -92,10 +227,13 @@ namespace UsbSerialExamples
 		{
 			
 			// aapt resource value: 0x7f030000
-			public const int main = 2130903040;
+			public const int device_list_item = 2130903040;
 			
 			// aapt resource value: 0x7f030001
-			public const int serial_console = 2130903041;
+			public const int main = 2130903041;
+			
+			// aapt resource value: 0x7f030002
+			public const int serial_console = 2130903042;
 			
 			static Layout()
 			{
@@ -107,8 +245,30 @@ namespace UsbSerialExamples
 			}
 		}
 		
+		public partial class Menu
+		{
+			
+			// aapt resource value: 0x7f060000
+			public const int test_console_menu = 2131099648;
+			
+			static Menu()
+			{
+				global::Android.Runtime.ResourceIdManager.UpdateIdValues();
+			}
+			
+			private Menu()
+			{
+			}
+		}
+		
 		public partial class String
 		{
+			
+			// aapt resource value: 0x7f05000f
+			public const int activity_status_standby = 2131034127;
+			
+			// aapt resource value: 0x7f050010
+			public const int activity_status_testing = 2131034128;
 			
 			// aapt resource value: 0x7f050001
 			public const int app_name = 2131034113;
@@ -116,8 +276,119 @@ namespace UsbSerialExamples
 			// aapt resource value: 0x7f050000
 			public const int app_title = 2131034112;
 			
+			// aapt resource value: 0x7f050003
+			public const int refreshing = 2131034115;
+			
+			// aapt resource value: 0x7f050011
+			public const int remain_time_initial = 2131034129;
+			
+			// aapt resource value: 0x7f050012
+			public const int remain_time_normal_end = 2131034130;
+			
+			// aapt resource value: 0x7f05000e
+			public const int test_cancel = 2131034126;
+			
 			// aapt resource value: 0x7f050002
-			public const int refreshing = 2131034114;
+			public const int test_console_title = 2131034114;
+			
+			// aapt resource value: 0x7f050026
+			public const int test_mode_cyclic_0x00_to_0xff = 2131034150;
+			
+			// aapt resource value: 0x7f050027
+			public const int test_mode_cyclic_0x41_to_0x5A = 2131034151;
+			
+			// aapt resource value: 0x7f050024
+			public const int test_mode_menu_title = 2131034148;
+			
+			// aapt resource value: 0x7f050025
+			public const int test_mode_nmew_check_sum = 2131034149;
+			
+			// aapt resource value: 0x7f050028
+			public const int test_mode_send_data = 2131034152;
+			
+			// aapt resource value: 0x7f050029
+			public const int test_mode_send_data_cdc = 2131034153;
+			
+			// aapt resource value: 0x7f050019
+			public const int test_period_10min = 2131034137;
+			
+			// aapt resource value: 0x7f050014
+			public const int test_period_10sec = 2131034132;
+			
+			// aapt resource value: 0x7f050016
+			public const int test_period_1min = 2131034134;
+			
+			// aapt resource value: 0x7f05001a
+			public const int test_period_30min = 2131034138;
+			
+			// aapt resource value: 0x7f050015
+			public const int test_period_30sec = 2131034133;
+			
+			// aapt resource value: 0x7f050017
+			public const int test_period_3min = 2131034135;
+			
+			// aapt resource value: 0x7f050018
+			public const int test_period_5min = 2131034136;
+			
+			// aapt resource value: 0x7f050013
+			public const int test_period_title = 2131034131;
+			
+			// aapt resource value: 0x7f05000d
+			public const int test_start = 2131034125;
+			
+			// aapt resource value: 0x7f05000a
+			public const int title_error = 2131034122;
+			
+			// aapt resource value: 0x7f050009
+			public const int title_good = 2131034121;
+			
+			// aapt resource value: 0x7f050008
+			public const int title_remain = 2131034120;
+			
+			// aapt resource value: 0x7f050006
+			public const int title_status = 2131034118;
+			
+			// aapt resource value: 0x7f050004
+			public const int title_test_mode = 2131034116;
+			
+			// aapt resource value: 0x7f050007
+			public const int title_test_time = 2131034119;
+			
+			// aapt resource value: 0x7f05000b
+			public const int title_total_receive = 2131034123;
+			
+			// aapt resource value: 0x7f05000c
+			public const int title_total_send = 2131034124;
+			
+			// aapt resource value: 0x7f050005
+			public const int title_transfar_rate = 2131034117;
+			
+			// aapt resource value: 0x7f050023
+			public const int transfer_rate_115200 = 2131034147;
+			
+			// aapt resource value: 0x7f05001c
+			public const int transfer_rate_1200 = 2131034140;
+			
+			// aapt resource value: 0x7f050020
+			public const int transfer_rate_19200 = 2131034144;
+			
+			// aapt resource value: 0x7f05001d
+			public const int transfer_rate_2400 = 2131034141;
+			
+			// aapt resource value: 0x7f050021
+			public const int transfer_rate_38400 = 2131034145;
+			
+			// aapt resource value: 0x7f05001e
+			public const int transfer_rate_4800 = 2131034142;
+			
+			// aapt resource value: 0x7f050022
+			public const int transfer_rate_57600 = 2131034146;
+			
+			// aapt resource value: 0x7f05001f
+			public const int transfer_rate_9600 = 2131034143;
+			
+			// aapt resource value: 0x7f05001b
+			public const int transfer_rate_menu_title = 2131034139;
 			
 			static String()
 			{

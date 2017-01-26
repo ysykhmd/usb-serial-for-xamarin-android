@@ -23,8 +23,6 @@
  * Original project home page: https://github.com/mik3y/usb-serial-for-android
  */
 
-using System;
-
 namespace Aid.UsbSerial
 {
     public enum StopBits

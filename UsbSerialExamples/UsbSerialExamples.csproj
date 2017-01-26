@@ -52,17 +52,23 @@
   <ItemGroup>
     <None Include="Resources\AboutResources.txt" />
     <None Include="Assets\AboutAssets.txt" />
+    <AndroidResource Include="Resources\layout\device_list_item.axml">
+      <SubType>Designer</SubType>
+    </AndroidResource>
   </ItemGroup>
   <ItemGroup>
-    <AndroidResource Include="Resources\values\Strings.xml" />
+    <AndroidResource Include="Resources\values\Strings.xml">
+      <SubType>Designer</SubType>
+    </AndroidResource>
   </ItemGroup>
   <ItemGroup>
+    <AndroidResource Include="Resources\menu\test_console_menu.xml" />
     <None Include="AndroidManifest.xml.original">
       <SubType>Designer</SubType>
     </None>
     <Compile Include="DeviceListActivity.cs" />
     <AndroidResource Include="Resources\layout\main.axml" />
-    <Content Include="Properties\AndroidManifest.xml" />
+    <None Include="Properties\AndroidManifest.xml" />
     <Compile Include="SerialConsoleActivity.cs" />
     <AndroidResource Include="Resources\layout\serial_console.axml">
       <SubType>Designer</SubType>
