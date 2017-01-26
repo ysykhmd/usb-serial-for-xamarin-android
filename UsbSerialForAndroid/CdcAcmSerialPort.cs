@@ -43,25 +43,25 @@ namespace Aid.UsbSerial
      */
 	internal class CdcAcmSerialPort : UsbSerialPort
     {
-        const string Tag = "CdcAcmSerialPort";
+        private const string Tag = "CdcAcmSerialPort";
 
-        const int USB_RECIP_INTERFACE = 0x01;
-        const int USB_RT_ACM = UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
-        const int SET_LINE_CODING = 0x20;  // USB CDC 1.1 section 6.2
-        const int GET_LINE_CODING = 0x21;
-        const int SET_CONTROL_LINE_STATE = 0x22;
-        const int SEND_BREAK = 0x23;
+        private const int USB_RECIP_INTERFACE = 0x01;
+        private const int USB_RT_ACM = UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
+        private const int SET_LINE_CODING = 0x20;  // USB CDC 1.1 section 6.2
+        private const int GET_LINE_CODING = 0x21;
+        private const int SET_CONTROL_LINE_STATE = 0x22;
+        private const int SEND_BREAK = 0x23;
 
-        bool EnableAsyncReads;
-        UsbInterface ControlInterface;
-        UsbInterface DataInterface;
+        private bool EnableAsyncReads;
+        private UsbInterface ControlInterface;
+        private UsbInterface DataInterface;
 
-        UsbEndpoint ControlEndpoint;
-        UsbEndpoint ReadEndpoint;
-        UsbEndpoint WriteEndpoint;
+        private UsbEndpoint ControlEndpoint;
+        private UsbEndpoint ReadEndpoint;
+        private UsbEndpoint WriteEndpoint;
 
-        bool CurrentRts = false;
-        bool CurrentDtr = false;
+        private bool CurrentRts = false;
+        private bool CurrentDtr = false;
 
 		public CdcAcmSerialPort(UsbManager usbManager, UsbDevice usbDevice, int portNumber)
             : base(usbManager, usbDevice, portNumber)

@@ -45,59 +45,59 @@ namespace Aid.UsbSerial
     {
         const string TAG = "ProlificSerialPort";
 
-        const int USB_READ_TIMEOUT_MILLIS = 1000;
-        const int USB_WRITE_TIMEOUT_MILLIS = 5000;
+        private const int USB_READ_TIMEOUT_MILLIS = 1000;
+        private const int USB_WRITE_TIMEOUT_MILLIS = 5000;
 
-        const int USB_RECIP_INTERFACE = 0x01;
+        private const int USB_RECIP_INTERFACE = 0x01;
 
-        const int VENDOR_READ_REQUEST_TYPE = (int)UsbAddressing.In | UsbConstants.UsbTypeVendor;
-        const int VENDOR_READ_REQUEST = 0x01;
+        private const int VENDOR_READ_REQUEST_TYPE = (int)UsbAddressing.In | UsbConstants.UsbTypeVendor;
+        private const int VENDOR_READ_REQUEST = 0x01;
 
-        const int VENDOR_WRITE_REQUEST_TYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeVendor;
-        const int VENDOR_WRITE_REQUEST = 0x01;
+        private const int VENDOR_WRITE_REQUEST_TYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeVendor;
+        private const int VENDOR_WRITE_REQUEST = 0x01;
 
-        const int ProlificCTRL_OUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
+        private const int ProlificCTRL_OUT_REQTYPE = (int)UsbAddressing.Out | UsbConstants.UsbTypeClass | USB_RECIP_INTERFACE;
 
-        const int WRITE_ENDPOINT = 0x02;
-        const int READ_ENDPOINT = 0x83;
-        const int INTERRUPT_ENDPOINT = 0x81;
+        private const int WRITE_ENDPOINT = 0x02;
+        private const int READ_ENDPOINT = 0x83;
+        private const int INTERRUPT_ENDPOINT = 0x81;
 
-        const int FLUSH_RX_REQUEST = 0x08;
-        const int FLUSH_TX_REQUEST = 0x09;
+        private const int FLUSH_RX_REQUEST = 0x08;
+        private const int FLUSH_TX_REQUEST = 0x09;
 
-        const int SET_LINE_REQUEST = 0x20;
-        const int SET_CONTROL_REQUEST = 0x22;
+        private const int SET_LINE_REQUEST = 0x20;
+        private const int SET_CONTROL_REQUEST = 0x22;
 
-        const int CONTROL_DTR = 0x01;
-        const int CONTROL_RTS = 0x02;
+        private const int CONTROL_DTR = 0x01;
+        private const int CONTROL_RTS = 0x02;
 
-        const int STATUS_FLAG_CD = 0x01;
-        const int STATUS_FLAG_DSR = 0x02;
-        const int STATUS_FLAG_RI = 0x08;
-        const int STATUS_FLAG_CTS = 0x80;
+        private const int STATUS_FLAG_CD = 0x01;
+        private const int STATUS_FLAG_DSR = 0x02;
+        private const int STATUS_FLAG_RI = 0x08;
+        private const int STATUS_FLAG_CTS = 0x80;
 
-        const int STATUS_BUFFER_SIZE = 10;
-        const int STATUS_BYTE_IDX = 8;
+        private const int STATUS_BUFFER_SIZE = 10;
+        private const int STATUS_BYTE_IDX = 8;
 
-        const int DEVICE_TYPE_HX = 0;
-        const int DEVICE_TYPE_0 = 1;
-        const int DEVICE_TYPE_1 = 2;
+        private const int DEVICE_TYPE_HX = 0;
+        private const int DEVICE_TYPE_0 = 1;
+        private const int DEVICE_TYPE_1 = 2;
 
-        int DeviceType;
+        private int DeviceType;
 
-        UsbEndpoint ReadEndpoint;
-        UsbEndpoint WriteEndpoint;
-        UsbEndpoint InterruptEndpoint;
+        private UsbEndpoint ReadEndpoint;
+        private UsbEndpoint WriteEndpoint;
+        private UsbEndpoint InterruptEndpoint;
 
-        volatile int ControlLinesValue = 0;
-        volatile int StatusBuffer = 0;
-        bool StopReadStatusThread = false;
-        IOException ReadStatusException = null;
+        private volatile int ControlLinesValue = 0;
+        private volatile int StatusBuffer = 0;
+        private bool StopReadStatusThread = false;
+        private IOException ReadStatusException = null;
 
-        int CurrentBaudRate;
-        int CurrentDataBits;
-        StopBits CurrentStopBits;
-        Parity CurrentParity;
+        private int CurrentBaudRate;
+        private int CurrentDataBits;
+        private StopBits CurrentStopBits;
+        private Parity CurrentParity;
 
         public ProlificSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)

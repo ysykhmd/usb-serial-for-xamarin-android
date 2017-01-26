@@ -33,52 +33,52 @@ namespace Aid.UsbSerial
 {
 	class Cp21xxSerialPort : UsbSerialPort
     {
-        const string TAG = "Cp21xxSerialPort";
-        const int DEFAULT_BAUD_RATE = 9600;
+        private const string TAG = "Cp21xxSerialPort";
+        private const int DEFAULT_BAUD_RATE = 9600;
 
-        const int USB_WRITE_TIMEOUT_MILLIS = 5000;
+        private const int USB_WRITE_TIMEOUT_MILLIS = 5000;
 
         /*
          * Configuration Request Types
          */
-        const int REQTYPE_HOST_TO_DEVICE = 0x41;
+        private const int REQTYPE_HOST_TO_DEVICE = 0x41;
 
         /*
          * Configuration Request Codes
          */
-        const int SILABSER_IFC_ENABLE_REQUEST_CODE = 0x00;
-        const int SILABSER_SET_BAUDDIV_REQUEST_CODE = 0x01;
-        const int SILABSER_SET_LINE_CTL_REQUEST_CODE = 0x03;
-        const int SILABSER_SET_MHS_REQUEST_CODE = 0x07;
-        const int SILABSER_SET_BAUDRATE = 0x1E;
-        const int SILABSER_FLUSH_REQUEST_CODE = 0x12;
+        private const int SILABSER_IFC_ENABLE_REQUEST_CODE = 0x00;
+        private const int SILABSER_SET_BAUDDIV_REQUEST_CODE = 0x01;
+        private const int SILABSER_SET_LINE_CTL_REQUEST_CODE = 0x03;
+        private const int SILABSER_SET_MHS_REQUEST_CODE = 0x07;
+        private const int SILABSER_SET_BAUDRATE = 0x1E;
+        private const int SILABSER_FLUSH_REQUEST_CODE = 0x12;
 
-        const int FLUSH_READ_CODE = 0x0a;
-        const int FLUSH_WRITE_CODE = 0x05;
+        private const int FLUSH_READ_CODE = 0x0a;
+        private const int FLUSH_WRITE_CODE = 0x05;
 
         /*
          * SilabsER_IFC_ENABLE_REQUEST_CODE
          */
-        const int UART_ENABLE = 0x0001;
-        const int UART_DISABLE = 0x0000;
+        private const int UART_ENABLE = 0x0001;
+        private const int UART_DISABLE = 0x0000;
 
         /*
          * SilabsER_SET_BAUDDIV_REQUEST_CODE
          */
-        const int BAUD_RATE_GEN_FREQ = 0x384000;
+        private const int BAUD_RATE_GEN_FREQ = 0x384000;
 
         /*
          * SilabsER_SET_MHS_REQUEST_CODE
          */
-        const int MCR_DTR = 0x0001;
-        const int MCR_RTS = 0x0002;
-        const int MCR_ALL = 0x0003;
+        private const int MCR_DTR = 0x0001;
+        private const int MCR_RTS = 0x0002;
+        private const int MCR_ALL = 0x0003;
 
-        const int CONTROL_WRITE_DTR = 0x0100;
-        const int CONTROL_WRITE_RTS = 0x0200;
+        private const int CONTROL_WRITE_DTR = 0x0100;
+        private const int CONTROL_WRITE_RTS = 0x0200;
 
-        UsbEndpoint ReadEndpoint;
-        UsbEndpoint WriteEndpoint;
+        private UsbEndpoint ReadEndpoint;
+        private UsbEndpoint WriteEndpoint;
 
         public Cp21xxSerialPort(UsbManager manager, UsbDevice device, int portNumber)
             : base(manager, device, portNumber)

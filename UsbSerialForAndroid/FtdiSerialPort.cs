@@ -171,8 +171,8 @@ namespace Aid.UsbSerial
          */
         private static bool ENABLE_ASYNC_READS = false;
 
-        UsbEndpoint readEndpoint;
-        UsbEndpoint writeEndpoint;
+        private UsbEndpoint readEndpoint;
+        private UsbEndpoint writeEndpoint;
 
 
         public FtdiSerialPort(UsbManager manager, UsbDevice device, int portNumber)
